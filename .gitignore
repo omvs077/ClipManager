@@ -1,0 +1,28 @@
+# CMake build directories
+/build/
+/out/
+/.cmake/
+
+# Visual Studio / MSBuild files
+.vs/
+*.user
+*.suo
+*.sln
+*.vcxproj
+*.filters
+
+# Compiler outputs
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.lib
+*.dll
+
+# IDE specific (VS Code, CLion)
+.vscode/
+.idea/
+
+# OS generated files
+Thumbs.db
+Desktop.ini
