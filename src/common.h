@@ -35,6 +35,7 @@
 #define APP_VERSION   L"1.0.0"
 #define WM_TRAY       (WM_APP + 1)
 #define WM_SHOW_POPUP (WM_APP + 2)
+#define WM_SHOW_SETTINGS (WM_APP + 3)
 #define HOTKEY_SHOW   1
 #define HOTKEY_PLAIN  2
 #define TRAY_ICON_ID  1

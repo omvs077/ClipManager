@@ -11,6 +11,7 @@ set(SOURCES
     src/popup.cpp
     src/storage.cpp
     src/detector.cpp
+    src/settings.cpp
 )
 
 add_executable(ClipManager WIN32 ${SOURCES} resources/resource.rc)

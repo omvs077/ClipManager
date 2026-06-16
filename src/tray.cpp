@@ -1,8 +1,10 @@
 #include "tray.h"
+#include "common.h"
 
 // Context menu item IDs
 #define IDM_SHOW    1001
 #define IDM_EXIT    1002
+#define IDM_SETTINGS 1003
 
 bool Tray::Create(HWND hwnd, HINSTANCE hInst) {
     ZeroMemory(&m_nid, sizeof(m_nid));
@@ -28,26 +30,20 @@ void Tray::Destroy() {
 
 void Tray::ShowContextMenu(HWND hwnd) {
     HMENU hMenu = CreatePopupMenu();
-    AppendMenuW(hMenu, MF_STRING, IDM_SHOW, L"Show History");
+    AppendMenuW(hMenu, MF_STRING, 1001, L"Show History");
+    AppendMenuW(hMenu, MF_STRING, 1003, L"Settings");
     AppendMenuW(hMenu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(hMenu, MF_STRING, IDM_EXIT, L"Exit");
+    AppendMenuW(hMenu, MF_STRING, 1002, L"Exit");
 
-    // Required: bring window to foreground before TrackPopupMenu
     SetForegroundWindow(hwnd);
+    POINT pt; GetCursorPos(&pt);
 
-    POINT pt;
-    GetCursorPos(&pt);
-
-    int cmd = TrackPopupMenu(
-        hMenu,
-        TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN,
-        pt.x, pt.y, 0, hwnd, nullptr
-    );
-
+    int cmd = TrackPopupMenu(hMenu,
+        TPM_RETURNCMD|TPM_RIGHTBUTTON|TPM_BOTTOMALIGN,
+        pt.x, pt.y, 0, hwnd, nullptr);
     DestroyMenu(hMenu);
 
-    if (cmd == IDM_SHOW)
-        SendMessageW(hwnd, WM_SHOW_POPUP, 0, 0);
-    else if (cmd == IDM_EXIT)
-        PostQuitMessage(0);
+    if      (cmd == 1001) SendMessageW(hwnd, WM_SHOW_POPUP, 0, 0);
+    else if (cmd == 1002) PostQuitMessage(0);
+    else if (cmd == 1003) SendMessageW(hwnd, WM_SHOW_SETTINGS, 0, 0);
 }

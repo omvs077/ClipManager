@@ -4,10 +4,12 @@
 #include "popup.h"
 #include "storage.h"
 #include "detector.h"
+#include "settings.h"
 
 static std::vector<ClipEntry> g_history;
 static Tray  g_tray;
 static Popup g_popup;
+static Settings g_settings;
 static bool  g_ignoreNextClipboard = false;
 
 static void OnClipboardUpdate(HWND hwnd);
@@ -15,12 +17,14 @@ static void OnPopupSelect(HWND hwnd, int index);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
+    
     case WM_CREATE:
         RegisterHotKey(hwnd, HOTKEY_SHOW,  MOD_WIN | MOD_NOREPEAT, 'V');
         RegisterHotKey(hwnd, HOTKEY_PLAIN, MOD_WIN | MOD_SHIFT | MOD_NOREPEAT, 'V');
         Clipboard::StartListening(hwnd);
         Storage::LoadHistory(g_history);
         return 0;
+
 
     case WM_CLIPBOARDUPDATE:
         if (!g_ignoreNextClipboard)
@@ -52,6 +56,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         g_tray.Destroy();
         PostQuitMessage(0);
         return 0;
+    
+    case WM_SHOW_SETTINGS:
+        g_settings.Show();
+        return 0;
+
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -141,6 +150,22 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
 
     if (!g_tray.Create(hwnd, hInst)) return 1;
     if (!g_popup.Create(hInst))      return 1;
+    if (!g_settings.Create(hInst))      return 1;
+    g_settings.Current.historyLimit    = MAX_HISTORY;
+    g_settings.Current.startWithWindows = true;
+
+    g_settings.OnSave = [](const AppSettings& s) {
+        if (s.historyLimit == 0) {
+            // Clear signal
+            g_history.clear();
+            Storage::SaveHistory(g_history);
+            g_popup.Show(g_history);
+            return;
+        }
+        if ((int)g_history.size() > s.historyLimit)
+            g_history.resize(s.historyLimit);
+        Storage::SaveHistory(g_history);
+    };
 
     g_popup.OnSelect = [hwnd](int i) { OnPopupSelect(hwnd, i); };
     g_popup.OnPin    = [](int)       { Storage::SaveHistory(g_history); };
