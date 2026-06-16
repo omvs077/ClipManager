@@ -34,7 +34,7 @@ bool Settings::Create(HINSTANCE hInst) {
         WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
         CLASS_NAME, L"ClipManager Settings",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-        0, 0, 400, 340,
+        0, 0, 400, 420,
         nullptr, nullptr, hInst, this);
     if (!m_hwnd) return false;
 
@@ -95,8 +95,8 @@ bool Settings::Create(HINSTANCE hInst) {
     m_btnClear = MakeButton(L"Clear All History", IDC_BTN_CLEAR, 24, 230, 160, 32);
 
     // ── Bottom buttons ───────────────────────────────────────────
-    MakeButton(L"Cancel", IDCANCEL, 188, 278, 88, 32);
-    m_btnSave = MakeButton(L"Save", IDC_BTN_SAVE, 288, 278, 88, 32);
+    MakeButton(L"Cancel", IDCANCEL,    188, 310, 88, 32);
+    m_btnSave = MakeButton(L"Save", IDC_BTN_SAVE, 288, 310, 88, 32);
 
     // Center on screen
     RECT rc; GetWindowRect(m_hwnd, &rc);
