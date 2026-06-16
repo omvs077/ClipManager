@@ -32,5 +32,10 @@ target_compile_definitions(ClipManager PRIVATE
 
 if(MSVC)
     target_compile_options(ClipManager PRIVATE /W4 /MP)
-    target_link_options(ClipManager PRIVATE /SUBSYSTEM:WINDOWS)
+    target_link_options(ClipManager PRIVATE
+    /SUBSYSTEM:WINDOWS
+    /MANIFESTUAC:"level='asInvoker' uiAccess='false'"
+    )
+
+    target_sources(ClipManager PRIVATE resources/app.manifest)
 endif()
