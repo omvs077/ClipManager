@@ -52,6 +52,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         UnregisterHotKey(hwnd, HOTKEY_SHOW);
         UnregisterHotKey(hwnd, HOTKEY_PLAIN);
         Clipboard::StopListening(hwnd);
+        if (g_settings.Current.clearOnExit)
+            g_history.clear();
         Storage::SaveHistory(g_history);
         g_tray.Destroy();
         PostQuitMessage(0);
@@ -155,16 +157,30 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     g_settings.Current.startWithWindows = true;
 
     g_settings.OnSave = [](const AppSettings& s) {
-        if (s.historyLimit == 0) {
-            // Clear signal
-            g_history.clear();
-            Storage::SaveHistory(g_history);
-            g_popup.Show(g_history);
-            return;
-        }
-        if ((int)g_history.size() > s.historyLimit)
-            g_history.resize(s.historyLimit);
+    // Apply history limit
+    if (s.historyLimit != -1 && (int)g_history.size() > s.historyLimit)
+        g_history.resize(s.historyLimit);
+
+    // Apply pause monitoring
+    g_ignoreNextClipboard = s.pauseMonitoring;
+
+    // Apply clear on exit (stored in settings, handled at WM_DESTROY)
+    // Apply auto-delete by days
+    if (s.autoDeleteDays != -1) {
+        // Remove entries older than X days
+        // (timestamp support coming in next phase — skip for now)
+    }
+
+    Storage::SaveHistory(g_history);
+    };
+
+    g_settings.OnClearHistory = []() {
+        g_history.clear();
         Storage::SaveHistory(g_history);
+    };
+
+    g_settings.OnPauseToggle = [](bool paused) {
+        g_ignoreNextClipboard = paused;
     };
 
     g_popup.OnSelect = [hwnd](int i) { OnPopupSelect(hwnd, i); };
