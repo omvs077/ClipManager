@@ -6,7 +6,7 @@ constexpr wchar_t Popup::CLASS_NAME[];
 bool Popup::Create(HINSTANCE hInst) {
     m_hInst = hInst;
 
-    WNDCLASSEXW wc = {};
+    WNDCLASSEXW wc  = {};
     wc.cbSize        = sizeof(wc);
     wc.lpfnWndProc   = WndProc;
     wc.hInstance     = hInst;
@@ -19,51 +19,44 @@ bool Popup::Create(HINSTANCE hInst) {
         WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
         CLASS_NAME, L"",
         WS_POPUP | WS_BORDER,
-        0, 0, 480, 380,
-        nullptr, nullptr, hInst, this
-    );
+        0, 0, 480, 400,
+        nullptr, nullptr, hInst, this);
     if (!m_hwnd) return false;
 
-    // Search box
     m_search = CreateWindowExW(
         WS_EX_CLIENTEDGE, L"EDIT", L"",
         WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
         8, 8, 464, 24,
-        m_hwnd, (HMENU)101, hInst, nullptr
-    );
+        m_hwnd, (HMENU)101, hInst, nullptr);
 
-    // List
     m_list = CreateWindowExW(
-        WS_EX_CLIENTEDGE, WC_LISTBOXW, L"",
+        WS_EX_CLIENTEDGE, L"ListBox", L"",
         WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
-        8, 40, 464, 330,
-        m_hwnd, (HMENU)102, hInst, nullptr
-    );
+        8, 40, 464, 338,
+        m_hwnd, (HMENU)102, hInst, nullptr);
 
-    // Hint label
-    CreateWindowExW(
-        0, L"STATIC",
-        L"Enter=Paste  Ctrl+P=Pin  Del=Remove  Esc=Close",
+    CreateWindowExW(0, L"STATIC",
+        L"Enter=Paste   Ctrl+P=Pin   Del=Remove   Esc=Close",
         WS_CHILD | WS_VISIBLE | SS_CENTER,
-        0, 358, 480, 16,
-        m_hwnd, nullptr, hInst, nullptr
-    );
+        0, 382, 480, 16,
+        m_hwnd, nullptr, hInst, nullptr);
 
-    // Subclass search box
     SetWindowSubclass(m_search, [](HWND hwnd, UINT msg, WPARAM wParam,
         LPARAM lParam, UINT_PTR, DWORD_PTR data) -> LRESULT {
             Popup* self = reinterpret_cast<Popup*>(data);
             if (msg == WM_KEYDOWN) {
-                if (wParam == VK_RETURN)  { self->ConfirmSelection(); return 0; }
-                if (wParam == VK_ESCAPE)  { self->Hide(); return 0; }
-                if (wParam == VK_DELETE && GetKeyState(VK_CONTROL) < 0)
-                    { self->DeleteSelected(); return 0; }
+                if (wParam == VK_RETURN) { self->ConfirmSelection(); return 0; }
+                if (wParam == VK_ESCAPE) { self->Hide(); return 0; }
                 if (wParam == VK_DOWN || wParam == VK_UP) {
                     SendMessageW(self->m_list, msg, wParam, lParam);
                     return 0;
                 }
-                if (wParam == 'P' && GetKeyState(VK_CONTROL) < 0)
-                    { self->TogglePin(); return 0; }
+                if (wParam == 'P' && (GetKeyState(VK_CONTROL) & 0x8000)) {
+                    self->TogglePin(); return 0;
+                }
+                if (wParam == VK_DELETE && (GetKeyState(VK_CONTROL) & 0x8000)) {
+                    self->DeleteSelected(); return 0;
+                }
             }
             if (msg == WM_CHAR) {
                 LRESULT r = DefSubclassProc(hwnd, msg, wParam, lParam);
@@ -78,13 +71,13 @@ bool Popup::Create(HINSTANCE hInst) {
     return true;
 }
 
-std::wstring Popup::BuildDisplayText(const ClipEntry& e) {
-    std::wstring label = Detector::TypeLabel(e.type);
-    std::wstring pin   = e.pinned ? L"★ " : L"";
-    std::wstring preview = e.text.substr(0, 80);
-    for (auto& c : preview) if (c == L'\n' || c == L'\r') c = L' ';
-    if (!label.empty()) return pin + label + L" " + preview;
-    return pin + preview;
+std::wstring Popup::BuildDisplayText(const ClipEntry& entry) {
+    std::wstring pin     = entry.pinned ? L"\u2605 " : L"";
+    std::wstring label   = Detector::TypeLabel(entry.type);
+    std::wstring preview = entry.text.substr(0, 80);
+    for (wchar_t& c : preview)
+        if (c == L'\n' || c == L'\r') c = L' ';
+    return pin + label + preview;
 }
 
 void Popup::Show(const std::vector<ClipEntry>& history) {
@@ -117,9 +110,9 @@ void Popup::PositionNearCursor() {
 
     int x = pt.x;
     int y = pt.y - h - 4;
-    if (x + w > work.right)  x = work.right - w;
-    if (x < work.left)        x = work.left;
-    if (y < work.top)         y = pt.y + 20;
+    if (x + w > work.right) x = work.right - w;
+    if (x < work.left)       x = work.left;
+    if (y < work.top)        y = pt.y + 20;
 
     SetWindowPos(m_hwnd, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE);
 }
@@ -128,28 +121,27 @@ void Popup::PopulateList(const std::wstring& filter) {
     SendMessageW(m_list, LB_RESETCONTENT, 0, 0);
     m_filtered.clear();
 
-    // Pinned entries first
     for (int pass = 0; pass < 2; pass++) {
         for (int i = 0; i < (int)m_history.size(); i++) {
-            const auto& e = m_history[i];
-            if (pass == 0 && !e.pinned) continue;
-            if (pass == 1 &&  e.pinned) continue;
+            const ClipEntry& entry = m_history[i];
+            if (pass == 0 && !entry.pinned) continue;
+            if (pass == 1 &&  entry.pinned) continue;
 
             bool match = filter.empty();
             if (!match) {
-                std::wstring lo = e.text, lf = filter;
+                std::wstring lo = entry.text;
+                std::wstring lf = filter;
                 std::transform(lo.begin(), lo.end(), lo.begin(), ::towlower);
                 std::transform(lf.begin(), lf.end(), lf.begin(), ::towlower);
                 match = lo.find(lf) != std::wstring::npos;
             }
             if (match) {
-                SendMessageW(m_list, LB_ADDSTRING, 0,
-                    (LPARAM)BuildDisplayText(e).c_str());
+                std::wstring display = BuildDisplayText(entry);
+                SendMessageW(m_list, LB_ADDSTRING, 0, (LPARAM)display.c_str());
                 m_filtered.push_back(i);
             }
         }
     }
-
     if (!m_filtered.empty())
         SendMessageW(m_list, LB_SETCURSEL, 0, 0);
 }
@@ -187,7 +179,7 @@ void Popup::DeleteSelected() {
 LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     Popup* self = nullptr;
     if (msg == WM_NCCREATE) {
-        auto* cs = reinterpret_cast<CREATESTRUCTW*>(lParam);
+        CREATESTRUCTW* cs = reinterpret_cast<CREATESTRUCTW*>(lParam);
         self = reinterpret_cast<Popup*>(cs->lpCreateParams);
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
         self->m_hwnd = hwnd;

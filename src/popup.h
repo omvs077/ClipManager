@@ -9,9 +9,9 @@ public:
     bool IsVisible() const;
     HWND GetHwnd() const { return m_hwnd; }
 
-    std::function<void(int)>  OnSelect;
-    std::function<void(int)>  OnPin;
-    std::function<void(int)>  OnDelete;
+    std::function<void(int)> OnSelect;
+    std::function<void(int)> OnPin;
+    std::function<void(int)> OnDelete;
 
 private:
     void PositionNearCursor();
@@ -19,12 +19,12 @@ private:
     void ConfirmSelection();
     void TogglePin();
     void DeleteSelected();
-    std::wstring BuildDisplayText(const ClipEntry& e);
+    std::wstring BuildDisplayText(const ClipEntry& entry);
 
-    HWND m_hwnd   = nullptr;
-    HWND m_list   = nullptr;
-    HWND m_search = nullptr;
-    HINSTANCE m_hInst = nullptr;
+    HWND      m_hwnd   = nullptr;
+    HWND      m_list   = nullptr;
+    HWND      m_search = nullptr;
+    HINSTANCE m_hInst  = nullptr;
 
     std::vector<ClipEntry> m_history;
     std::vector<int>       m_filtered;

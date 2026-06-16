@@ -17,10 +17,11 @@ static std::wstring Decode(const std::wstring& s) {
     std::wstring r;
     for (size_t i = 0; i < s.size(); i++) {
         if (s[i] == L'\\' && i + 1 < s.size()) {
-            if      (s[i+1] == L'n')  { r += L'\n'; i++; }
-            else if (s[i+1] == L'r')  { r += L'\r'; i++; }
-            else if (s[i+1] == L'\\') { r += L'\\'; i++; }
-            else if (s[i+1] == L'p')  { r += L'|';  i++; }
+            wchar_t n = s[i+1];
+            if      (n == L'n')  { r += L'\n'; i++; }
+            else if (n == L'r')  { r += L'\r'; i++; }
+            else if (n == L'\\') { r += L'\\'; i++; }
+            else if (n == L'p')  { r += L'|';  i++; }
             else r += s[i];
         } else {
             r += s[i];
@@ -42,12 +43,10 @@ std::wstring Storage::GetAppDataPath() {
 bool Storage::SaveHistory(const std::vector<ClipEntry>& history) {
     std::wofstream file(GetAppDataPath(), std::ios::trunc);
     if (!file.is_open()) return false;
-
-    for (const auto& e : history) {
-        // Format: pinned|type|text
-        int type = (int)e.type;
-        int pin  = e.pinned ? 1 : 0;
-        file << pin << L"|" << type << L"|" << Encode(e.text) << L"\n";
+    for (const ClipEntry& entry : history) {
+        int pin  = entry.pinned ? 1 : 0;
+        int type = static_cast<int>(entry.type);
+        file << pin << L"|" << type << L"|" << Encode(entry.text) << L"\n";
     }
     return true;
 }
@@ -55,22 +54,19 @@ bool Storage::SaveHistory(const std::vector<ClipEntry>& history) {
 bool Storage::LoadHistory(std::vector<ClipEntry>& history) {
     std::wifstream file(GetAppDataPath());
     if (!file.is_open()) return false;
-
     history.clear();
     std::wstring line;
     while (std::getline(file, line)) {
         if (line.empty()) continue;
-        // Parse: pin|type|text
         size_t p1 = line.find(L'|');
         size_t p2 = line.find(L'|', p1 + 1);
         if (p1 == std::wstring::npos || p2 == std::wstring::npos) continue;
-
-        ClipEntry e;
-        e.pinned = (line.substr(0, p1) == L"1");
-        e.type   = (ClipType)std::stoi(line.substr(p1 + 1, p2 - p1 - 1));
-        e.text   = Decode(line.substr(p2 + 1));
-        if (!e.text.empty())
-            history.push_back(e);
+        ClipEntry entry;
+        entry.pinned = (line.substr(0, p1) == L"1");
+        entry.type   = static_cast<ClipType>(std::stoi(line.substr(p1 + 1, p2 - p1 - 1)));
+        entry.text   = Decode(line.substr(p2 + 1));
+        if (!entry.text.empty())
+            history.push_back(entry);
     }
     return true;
 }

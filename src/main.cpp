@@ -8,10 +8,10 @@
 static std::vector<ClipEntry> g_history;
 static Tray  g_tray;
 static Popup g_popup;
-static bool  g_ignorNextClipboard = false;
+static bool  g_ignoreNextClipboard = false;
 
 static void OnClipboardUpdate(HWND hwnd);
-static void OnPopupSelect(HWND hwnd, int index, bool plainText = false);
+static void OnPopupSelect(HWND hwnd, int index);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -23,9 +23,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         return 0;
 
     case WM_CLIPBOARDUPDATE:
-        if (!g_ignorNextClipboard)
+        if (!g_ignoreNextClipboard)
             OnClipboardUpdate(hwnd);
-        g_ignorNextClipboard = false;
+        g_ignoreNextClipboard = false;
         return 0;
 
     case WM_HOTKEY:
@@ -61,24 +61,26 @@ static void OnClipboardUpdate(HWND hwnd) {
     if (text.empty()) return;
     if (!g_history.empty() && g_history.front().text == text) return;
 
-    auto it = std::find_if(g_history.begin(), g_history.end(),
-        [&](const ClipEntry& e){ return e.text == text; });
-    
-    bool wasPinned = false;
-    if (it != g_history.end()) {
-        wasPinned = it->pinned;
-        g_history.erase(it);
+    // Remove duplicate
+    for (int i = 0; i < (int)g_history.size(); i++) {
+        if (g_history[i].text == text) {
+            g_history.erase(g_history.begin() + i);
+            break;
+        }
     }
 
     ClipEntry entry;
     entry.text   = text;
     entry.type   = Detector::Detect(text);
-    entry.pinned = wasPinned;
+    entry.pinned = false;
 
     // Insert after pinned items
-    auto insertPos = std::find_if(g_history.begin(), g_history.end(),
-        [](const ClipEntry& e){ return !e.pinned; });
-    g_history.insert(insertPos, entry);
+    int insertAt = 0;
+    for (int i = 0; i < (int)g_history.size(); i++) {
+        if (g_history[i].pinned) insertAt = i + 1;
+        else break;
+    }
+    g_history.insert(g_history.begin() + insertAt, entry);
 
     if (g_history.size() > MAX_HISTORY)
         g_history.resize(MAX_HISTORY);
@@ -86,35 +88,35 @@ static void OnClipboardUpdate(HWND hwnd) {
     Storage::SaveHistory(g_history);
 }
 
-static void OnPopupSelect(HWND hwnd, int index, bool plainText) {
+static void OnPopupSelect(HWND hwnd, int index) {
     if (index < 0 || index >= (int)g_history.size()) return;
 
-    const std::wstring& text = g_history[index];
+    std::wstring text = g_history[index].text;
+    bool wasPinned    = g_history[index].pinned;
 
-    g_ignorNextClipboard = true;
+    g_ignoreNextClipboard = true;
+    Clipboard::WriteText(hwnd, text);
 
-    if (plainText)
-        Clipboard::WritePlainText(hwnd, text);
-    else
-        Clipboard::WriteText(hwnd, text);
-
-    // Bubble to top (preserve pin)
+    // Bubble to top (after pinned items)
     ClipEntry selected = g_history[index];
     g_history.erase(g_history.begin() + index);
-    auto insertPos = selected.pinned ? g_history.begin() :
-        std::find_if(g_history.begin(), g_history.end(),
-            [](const ClipEntry& e){ return !e.pinned; });
-    g_history.insert(insertPos, selected);
+
+    int insertAt = 0;
+    if (!selected.pinned) {
+        for (int i = 0; i < (int)g_history.size(); i++) {
+            if (g_history[i].pinned) insertAt = i + 1;
+            else break;
+        }
+    }
+    g_history.insert(g_history.begin() + insertAt, selected);
     Storage::SaveHistory(g_history);
 
     Sleep(50);
     INPUT inputs[4] = {};
     inputs[0].type = INPUT_KEYBOARD; inputs[0].ki.wVk = VK_CONTROL;
     inputs[1].type = INPUT_KEYBOARD; inputs[1].ki.wVk = 'V';
-    inputs[2].type = INPUT_KEYBOARD; inputs[2].ki.wVk = 'V';
-    inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
-    inputs[3].type = INPUT_KEYBOARD; inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
-    inputs[3].ki.wVk = VK_CONTROL;
+    inputs[2].type = INPUT_KEYBOARD; inputs[2].ki.wVk = 'V';   inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+    inputs[3].type = INPUT_KEYBOARD; inputs[3].ki.wVk = VK_CONTROL; inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
     SendInput(4, inputs, sizeof(INPUT));
 }
 
@@ -125,11 +127,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_WIN95_CLASSES };
     InitCommonControlsEx(&icc);
 
-    WNDCLASSEXW wc = {};
-    wc.cbSize = sizeof(wc);
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hInst;
-    wc.lpszClassName = L"ClipManagerMain";
+    WNDCLASSEXW wc   = {};
+    wc.cbSize         = sizeof(wc);
+    wc.lpfnWndProc    = WndProc;
+    wc.hInstance      = hInst;
+    wc.lpszClassName  = L"ClipManagerMain";
     RegisterClassExW(&wc);
 
     HWND hwnd = CreateWindowExW(0, L"ClipManagerMain", APP_NAME,
@@ -138,9 +140,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     if (!hwnd) return 1;
 
     if (!g_tray.Create(hwnd, hInst)) return 1;
-    if (!g_popup.Create(hInst)) return 1;
+    if (!g_popup.Create(hInst))      return 1;
 
-    g_popup.OnSelect = [hwnd](int i) { OnPopupSelect(hwnd, i, false); };
+    g_popup.OnSelect = [hwnd](int i) { OnPopupSelect(hwnd, i); };
     g_popup.OnPin    = [](int)       { Storage::SaveHistory(g_history); };
     g_popup.OnDelete = [](int)       { Storage::SaveHistory(g_history); };
 
@@ -149,7 +151,6 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-
     CloseHandle(hMutex);
     return (int)msg.wParam;
 }
