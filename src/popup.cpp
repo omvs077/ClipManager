@@ -46,16 +46,16 @@ static void InitResources() {
     hBrHov    = CreateSolidBrush(BG_ITEM_HOV);
     hBrHint   = CreateSolidBrush(BG_HINT);
 
-    hFontUI    = CreateFontW(15,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
+    hFontUI    = CreateFontW(18,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
         DEFAULT_PITCH|FF_DONTCARE, L"Segoe UI");
-    hFontSmall = CreateFontW(12,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
+    hFontSmall = CreateFontW(14,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
         DEFAULT_PITCH|FF_DONTCARE, L"Segoe UI");
-    hFontMono  = CreateFontW(13,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
+    hFontMono  = CreateFontW(15,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
         FIXED_PITCH|FF_DONTCARE, L"Cascadia Mono");
-    hFontIcon  = CreateFontW(16,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
+    hFontIcon  = CreateFontW(18,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
         OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
         DEFAULT_PITCH|FF_DONTCARE, L"Segoe UI Symbol");
 }
@@ -473,6 +473,26 @@ void Popup::PaintRightPanel(HDC hdc) {
     SetTextColor(hdc, typeClr);
     SetBkMode(hdc, TRANSPARENT);
     TextOutW(hdc, rx+28, y+3, typeName.c_str(), (int)typeName.size());
+
+    // ── Quick action button ─────────────────────────────────────
+    m_quickActionRect = {0,0,0,0};
+    std::wstring actionLabel;
+    if      (m_previewType == ClipType::URL)      actionLabel = L"Open in Browser";
+    else if (m_previewType == ClipType::FilePath)  actionLabel = L"Open in Explorer";
+    else if (m_previewType == ClipType::Color)     actionLabel = L"Copy Hex";
+
+    if (!actionLabel.empty()) {
+        SIZE asz; GetTextExtentPoint32W(hdc, actionLabel.c_str(), (int)actionLabel.size(), &asz);
+        int ax = badgeRc.right + 12;
+        RECT actRc = {ax, y, ax + asz.cx + 20, y + tsz.cy + 6};
+        HBRUSH hActBg = CreateSolidBrush(RGB(45,90,170));
+        FillRoundRect(hdc, actRc, 4, hActBg);
+        DeleteObject(hActBg);
+        SetTextColor(hdc, RGB(255,255,255));
+        TextOutW(hdc, ax+10, y+3, actionLabel.c_str(), (int)actionLabel.size());
+        m_quickActionRect = actRc; // store in WINDOW coordinates, not panel-relative
+    }
+
     y += tsz.cy + 16;
 
     // ── Preview text ─────────────────────────────────────────────
@@ -545,6 +565,30 @@ void Popup::PaintRightPanel(HDC hdc) {
         CLR_DIM, hFontSmall, DT_LEFT|DT_TOP|DT_SINGLELINE);
 }
 
+void Popup::HandleQuickAction() {
+    if (m_previewType == ClipType::URL) {
+        if (OnOpenUrl) OnOpenUrl(m_previewText);
+    }
+    else if (m_previewType == ClipType::FilePath) {
+        if (OnOpenPath) OnOpenPath(m_previewText);
+    }
+    else if (m_previewType == ClipType::Color) {
+        // Copy hex to clipboard directly via the OS clipboard
+        if (OpenClipboard(m_hwnd)) {
+            EmptyClipboard();
+            size_t bytes = (m_previewText.size()+1) * sizeof(wchar_t);
+            HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, bytes);
+            if (hMem) {
+                wchar_t* p = (wchar_t*)GlobalLock(hMem);
+                memcpy(p, m_previewText.c_str(), bytes);
+                GlobalUnlock(hMem);
+                SetClipboardData(CF_UNICODETEXT, hMem);
+            }
+            CloseClipboard();
+        }
+    }
+}
+
 // ── WndProc ──────────────────────────────────────────────────────
 LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     Popup* self = nullptr;
@@ -602,6 +646,16 @@ LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_LBUTTONDOWN: {
         int mx = LOWORD(lParam);
         int my = HIWORD(lParam);
+
+        // Check quick action button first
+        if (self->m_quickActionRect.right > self->m_quickActionRect.left) {
+            RECT& r = self->m_quickActionRect;
+            if (mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {
+                self->HandleQuickAction();
+                return 0;
+            }
+        }
+
         if (mx < LEFT_W && my >= SEARCH_H && my < H - HINT_H) {
             int visibleItems = (H - SEARCH_H - HINT_H) / ITEM_H;
             int startIdx = 0;

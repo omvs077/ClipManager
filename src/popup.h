@@ -12,6 +12,8 @@ public:
     std::function<void(int)> OnSelect;
     std::function<void(int)> OnPin;
     std::function<void(int)> OnDelete;
+    std::function<void(const std::wstring&)> OnOpenUrl;
+    std::function<void(const std::wstring&)> OnOpenPath;
 
 private:
     void PositionNearCursor();
@@ -22,6 +24,7 @@ private:
     void UpdatePreview(int historyIndex);
     void PaintLeftPanel(HDC hdc);
     void PaintRightPanel(HDC hdc);
+    void HandleQuickAction();
     std::wstring GetTypeName(ClipType type);
 
     HWND      m_hwnd   = nullptr;
@@ -33,6 +36,8 @@ private:
     int                    m_selected = 0;
     time_t m_previewTimestamp = 0;
 
+    RECT m_quickActionRect = {};
+
     std::wstring m_searchText;
 
     std::wstring m_previewText;
@@ -40,12 +45,12 @@ private:
     bool         m_previewPinned = false;
     int          m_previewIndex  = -1;
 
-    static constexpr int W        = 820;
-    static constexpr int H        = 540;
+    static constexpr int W        = 880;
+    static constexpr int H        = 580;
     static constexpr int LEFT_W   = 340;
     static constexpr int SEARCH_H = 52;
     static constexpr int HINT_H   = 36;
-    static constexpr int ITEM_H   = 52;
+    static constexpr int ITEM_H   = 60;
 
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK SearchProc(HWND, UINT, WPARAM, LPARAM,

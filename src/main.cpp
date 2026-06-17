@@ -200,6 +200,14 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     g_popup.OnSelect = [hwnd](int i) { OnPopupSelect(hwnd, i); };
     g_popup.OnPin    = [](int)       { Storage::SaveHistory(g_history); };
     g_popup.OnDelete = [](int)       { Storage::SaveHistory(g_history); };
+    g_popup.OnOpenUrl = [](const std::wstring& url) {
+        ShellExecuteW(nullptr, L"open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    };
+
+    g_popup.OnOpenPath = [](const std::wstring& path) {
+        ShellExecuteW(nullptr, L"open", L"explorer.exe",
+            (L"/select,\"" + path + L"\"").c_str(), nullptr, SW_SHOWNORMAL);
+    };
 
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) {
