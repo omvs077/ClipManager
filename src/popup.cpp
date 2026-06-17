@@ -70,6 +70,25 @@ static COLORREF TypeColor(ClipType t) {
     }
 }
 
+static std::wstring RelativeTime(time_t ts) {
+    if (ts == 0) return L"Unknown";
+    time_t now = time(nullptr);
+    long long diff = (long long)now - (long long)ts;
+    if (diff < 0) diff = 0;
+
+    if (diff < 60)          return L"Just now";
+    if (diff < 3600)        return std::to_wstring(diff/60) + L" min ago";
+    if (diff < 86400)       return std::to_wstring(diff/3600) + L" hr ago";
+    if (diff < 86400*7)     return std::to_wstring(diff/86400) + L" days ago";
+
+    // Older — show actual date
+    tm t;
+    localtime_s(&t, &ts);
+    wchar_t buf[32];
+    swprintf_s(buf, L"%02d/%02d/%04d", t.tm_mon+1, t.tm_mday, t.tm_year+1900);
+    return buf;
+}
+
 static std::wstring TypeIcon(ClipType t) {
     switch(t) {
         case ClipType::URL:      return L"\U0001F517";
@@ -261,6 +280,7 @@ void Popup::UpdatePreview(int historyIndex) {
     m_previewType   = e.type;
     m_previewPinned = e.pinned;
     m_previewIndex  = historyIndex;
+    m_previewTimestamp  = e.timestamp;
 }
 
 void Popup::ConfirmSelection() {
@@ -480,6 +500,7 @@ void Popup::PaintRightPanel(HDC hdc) {
     };
 
     MetaRow(L"Type",       GetTypeName(m_previewType));
+    MetaRow(L"Copied",     RelativeTime(m_previewTimestamp));
     MetaRow(L"Characters", std::to_wstring(m_previewText.size()));
 
     int lines = 1;

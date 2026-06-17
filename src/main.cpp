@@ -14,6 +14,7 @@ static bool  g_ignoreNextClipboard = false;
 
 static void OnClipboardUpdate(HWND hwnd);
 static void OnPopupSelect(HWND hwnd, int index);
+static void ApplyAutoDelete(int days);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -23,6 +24,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         RegisterHotKey(hwnd, HOTKEY_PLAIN, MOD_WIN | MOD_SHIFT | MOD_NOREPEAT, 'V');
         Clipboard::StartListening(hwnd);
         Storage::LoadHistory(g_history);
+        ApplyAutoDelete(g_settings.Current.autoDeleteDays);
         return 0;
 
 
@@ -67,6 +69,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
+static void ApplyAutoDelete(int days) {
+    if (days <= 0) return; // -1 = never
+    time_t cutoff = time(nullptr) - (days * 24 * 60 * 60);
+    g_history.erase(
+        std::remove_if(g_history.begin(), g_history.end(),
+            [cutoff](const ClipEntry& e) {
+                return !e.pinned && e.timestamp < cutoff;
+            }),
+        g_history.end());
+}
+
 static void OnClipboardUpdate(HWND hwnd) {
     std::wstring text = Clipboard::ReadText();
     if (text.empty()) return;
@@ -84,6 +97,7 @@ static void OnClipboardUpdate(HWND hwnd) {
     entry.text   = text;
     entry.type   = Detector::Detect(text);
     entry.pinned = false;
+    entry.timestamp = time(nullptr);
 
     // Insert after pinned items
     int insertAt = 0;
@@ -163,7 +177,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
 
     // Apply pause monitoring
     g_ignoreNextClipboard = s.pauseMonitoring;
-
+    ApplyAutoDelete(s.autoDeleteDays);
     // Apply clear on exit (stored in settings, handled at WM_DESTROY)
     // Apply auto-delete by days
     if (s.autoDeleteDays != -1) {

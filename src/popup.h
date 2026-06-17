@@ -31,6 +31,7 @@ private:
     std::vector<ClipEntry> m_history;
     std::vector<int>       m_filtered;
     int                    m_selected = 0;
+    time_t m_previewTimestamp = 0;
 
     std::wstring m_searchText;
 

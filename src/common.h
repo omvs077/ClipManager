@@ -9,6 +9,7 @@
 #include <commctrl.h>
 #include <shellapi.h>
 #include <shlobj.h>
+#include <ctime>
 
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "comctl32.lib")
@@ -53,4 +54,5 @@ struct ClipEntry {
     std::wstring text;
     ClipType     type   = ClipType::Text;
     bool         pinned = false;
+    time_t       timestamp = 0;
 };
