@@ -291,9 +291,9 @@ bool Settings::Create(HINSTANCE hInst) {
         WS_EX_DLGMODALFRAME,
         CLASS_NAME, L"ClipManager Settings",
         WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,
-        0, 0, 420, 420,
+        0, 0, 420, 480,
         nullptr, nullptr, hInst, this);
-    if (!m_hwnd) return false;
+        if (!m_hwnd) return false;
 
     // Tab control
     INITCOMMONCONTROLSEX icc = {sizeof(icc), ICC_TAB_CLASSES|ICC_HOTKEY_CLASS};
@@ -301,7 +301,7 @@ bool Settings::Create(HINSTANCE hInst) {
 
     m_tabs = CreateWindowExW(0, WC_TABCONTROLW, L"",
         WS_CHILD|WS_VISIBLE|TCS_FLATBUTTONS,
-        0, 0, 420, 380,
+        0, 0, 420, 400,
         m_hwnd, (HMENU)ID_TAB, hInst, nullptr);
     SendMessageW(m_tabs, WM_SETFONT, (WPARAM)m_hFont, TRUE);
 
@@ -331,8 +331,8 @@ bool Settings::Create(HINSTANCE hInst) {
     m_panels[4] = CreateTabPrivacy(tabRc);
 
     // Bottom buttons
-    MakeButton(m_hwnd, L"Cancel", ID_BTN_CANCEL, 216, 382, 88, 30);
-    MakeButton(m_hwnd, L"Save",   ID_BTN_SAVE,   316, 382, 88, 30);
+    MakeButton(m_hwnd, L"Cancel", ID_BTN_CANCEL, 216, 412, 88, 30);
+    MakeButton(m_hwnd, L"Save",   ID_BTN_SAVE,   316, 412, 88, 30);
 
     ShowTab(0);
     PopulateControls();

@@ -171,7 +171,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
         // (timestamp support coming in next phase — skip for now)
     }
 
-    Storage::SaveHistory(g_history);
+        Storage::SaveHistory(g_history);
     };
 
     g_settings.OnClearHistory = []() {
