@@ -326,8 +326,8 @@ bool Settings::Create(HINSTANCE hInst) {
     AddTab(L"Appearance");
     AddTab(L"Privacy");
 
-    // Per checklist: panel sits at X:16, Y:44, size 488x350
-    RECT tabRc = {16, 44, 16+488, 44+350};
+    // Per checklist: panel sits
+    RECT tabRc = {16, 44, 16+488, 44+400};
 
     m_panels[0] = CreateTabGeneral(tabRc);
     m_panels[1] = CreateTabHistory(tabRc);
@@ -336,8 +336,8 @@ bool Settings::Create(HINSTANCE hInst) {
     m_panels[4] = CreateTabPrivacy(tabRc);
 
     // ── Action buttons: direct children of main window, in the runway ──
-    MakeButton(m_hwnd, L"Save",   ID_BTN_SAVE,   286, 350, 90, 32);
-    MakeButton(m_hwnd, L"Cancel", ID_BTN_CANCEL, 388, 350, 90, 32);
+    MakeButton(m_hwnd, L"Save",   ID_BTN_SAVE,   286, 380, 90, 32);
+    MakeButton(m_hwnd, L"Cancel", ID_BTN_CANCEL, 388, 380, 90, 32);
 
     ShowTab(0);
     PopulateControls();

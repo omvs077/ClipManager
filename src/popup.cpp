@@ -346,7 +346,8 @@ void Popup::PaintLeftPanel(HDC hdc) {
 
     // List items
     int listTop = SEARCH_H;
-    int visibleItems = (H - SEARCH_H - HINT_H) / ITEM_H;
+    int itemHeight = m_compactMode ? 40 : ITEM_H;
+    int visibleItems = (H - SEARCH_H - HINT_H) / itemHeight;   
 
     // Scroll offset
     int startIdx = 0;
@@ -359,8 +360,8 @@ void Popup::PaintLeftPanel(HDC hdc) {
         const ClipEntry& e = m_history[hidx];
         bool sel = (i == m_selected);
 
-        int y = listTop + vi * ITEM_H;
-        RECT itemRc = {0, y, LEFT_W, y + ITEM_H};
+        int y = listTop + vi * itemHeight;
+        RECT itemRc = {0, y, LEFT_W, y + itemHeight};
 
         // Item background
         if (sel)
@@ -370,7 +371,7 @@ void Popup::PaintLeftPanel(HDC hdc) {
 
         // Left accent bar for selected
         if (sel) {
-            RECT accent = {0, y, 3, y + ITEM_H};
+            RECT accent = {0, y, 3, y + itemHeight};
             HBRUSH hAcc = CreateSolidBrush(CLR_WHITE);
             FillRect(hdc, &accent, hAcc);
             DeleteObject(hAcc);
@@ -402,21 +403,17 @@ void Popup::PaintLeftPanel(HDC hdc) {
 
         // Sub-line: type name
         std::wstring sub = GetTypeName(e.type);
-        if (e.text.find(L'\n') != std::wstring::npos) {
-            int lines = 1;
-            for (wchar_t c : e.text) if (c == L'\n') lines++;
-            sub += L"  \u2022  " + std::to_wstring((int)lines) + L" lines";
-        } else {
-            sub += L"  \u2022  " + std::to_wstring(e.text.size()) + L" chars";
-        }
-        RECT subRc = {34, y + 30, LEFT_W - 28, y + ITEM_H - 4};
+            if (m_showTimestamps) {
+                sub += L"  \u2022  " + RelativeTime(e.timestamp);
+            }
+        RECT subRc = {34, y + 30, LEFT_W - 28, y + itemHeight - 4};
         DrawTextLine(hdc, sub, subRc,
             sel ? C(180,200,255) : CLR_DIM, hFontSmall,
             DT_LEFT | DT_TOP | DT_SINGLELINE);
 
         // Row separator
         if (!sel)
-            HLine(hdc, 8, LEFT_W - 8, y + ITEM_H - 1, CLR_SEP);
+            HLine(hdc, 8, LEFT_W - 8, y + itemHeight - 1, CLR_SEP);
     }
 
     // Hint bar

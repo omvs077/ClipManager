@@ -6,6 +6,22 @@
 #include "detector.h"
 #include "settings.h"
 
+static void ShowToast(HWND hwnd, const std::wstring& text) {
+    NOTIFYICONDATAW nid = {};
+    nid.cbSize = sizeof(nid);
+    nid.hWnd   = hwnd;
+    nid.uID    = TRAY_ICON_ID;
+    nid.uFlags = NIF_INFO;
+    nid.dwInfoFlags = NIIF_INFO;
+    wcscpy_s(nid.szInfoTitle, L"ClipManager");
+
+    std::wstring preview = text.substr(0, 60);
+    for (wchar_t& c : preview) if (c == L'\n' || c == L'\r') c = L' ';
+    wcscpy_s(nid.szInfo, preview.c_str());
+
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
+}
+
 static std::vector<ClipEntry> g_history;
 static Tray  g_tray;
 static Popup g_popup;
@@ -50,6 +66,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         g_popup.Show(g_history);
         return 0;
 
+    case WM_CLOSE:
+        if (g_settings.Current.minimizeToTray) {
+            ShowWindow(hwnd, SW_HIDE);
+            return 0;
+        }
+        DestroyWindow(hwnd);
+        return 0;
+
     case WM_DESTROY:
         UnregisterHotKey(hwnd, HOTKEY_SHOW);
         UnregisterHotKey(hwnd, HOTKEY_PLAIN);
@@ -80,7 +104,41 @@ static void ApplyAutoDelete(int days) {
         g_history.end());
 }
 
+static bool IsPasswordManagerActive() {
+    HWND fg = GetForegroundWindow();
+    if (!fg) return false;
+
+    wchar_t title[256] = {};
+    GetWindowTextW(fg, title, 256);
+
+    DWORD pid = 0;
+    GetWindowThreadProcessId(fg, &pid);
+
+    wchar_t procName[MAX_PATH] = {};
+    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (hProc) {
+        DWORD size = MAX_PATH;
+        QueryFullProcessImageNameW(hProc, 0, procName, &size);
+        CloseHandle(hProc);
+    }
+
+    std::wstring proc = procName;
+    std::transform(proc.begin(), proc.end(), proc.begin(), ::towlower);
+
+    static const wchar_t* blocked[] = {
+        L"1password", L"bitwarden", L"keepass", L"lastpass",
+        L"dashlane", L"nordpass", L"keeper"
+    };
+    for (auto* name : blocked) {
+        if (proc.find(name) != std::wstring::npos) return true;
+    }
+    return false;
+}
+
 static void OnClipboardUpdate(HWND hwnd) {
+    if (g_settings.Current.excludePasswords && IsPasswordManagerActive())
+        return;
+
     std::wstring text = Clipboard::ReadText();
     if (text.empty()) return;
     if (!g_history.empty() && g_history.front().text == text) return;
@@ -111,6 +169,8 @@ static void OnClipboardUpdate(HWND hwnd) {
         g_history.resize(MAX_HISTORY);
 
     Storage::SaveHistory(g_history);
+    if (g_settings.Current.showNotifications)
+    ShowToast(hwnd, text);
 }
 
 static void OnPopupSelect(HWND hwnd, int index) {
@@ -167,24 +227,18 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     if (!g_tray.Create(hwnd, hInst)) return 1;
     if (!g_popup.Create(hInst))      return 1;
     if (!g_settings.Create(hInst))      return 1;
+    g_popup.SetCompactMode(g_settings.Current.compactMode);
+    g_popup.SetShowTimestamps(g_settings.Current.showTimestamps);
     g_settings.Current.historyLimit    = MAX_HISTORY;
     g_settings.Current.startWithWindows = true;
 
     g_settings.OnSave = [](const AppSettings& s) {
-    // Apply history limit
-    if (s.historyLimit != -1 && (int)g_history.size() > s.historyLimit)
-        g_history.resize(s.historyLimit);
-
-    // Apply pause monitoring
-    g_ignoreNextClipboard = s.pauseMonitoring;
-    ApplyAutoDelete(s.autoDeleteDays);
-    // Apply clear on exit (stored in settings, handled at WM_DESTROY)
-    // Apply auto-delete by days
-    if (s.autoDeleteDays != -1) {
-        // Remove entries older than X days
-        // (timestamp support coming in next phase — skip for now)
-    }
-
+        if (s.historyLimit != -1 && (int)g_history.size() > s.historyLimit)
+            g_history.resize(s.historyLimit);
+        g_ignoreNextClipboard = s.pauseMonitoring;
+        ApplyAutoDelete(s.autoDeleteDays);
+        g_popup.SetCompactMode(s.compactMode);
+        g_popup.SetShowTimestamps(s.showTimestamps);
         Storage::SaveHistory(g_history);
     };
 

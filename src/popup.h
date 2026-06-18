@@ -15,6 +15,9 @@ public:
     std::function<void(const std::wstring&)> OnOpenUrl;
     std::function<void(const std::wstring&)> OnOpenPath;
 
+    void SetCompactMode(bool compact)     { m_compactMode = compact; }
+    void SetShowTimestamps(bool show)     { m_showTimestamps = show; }
+
 private:
     void PositionNearCursor();
     void PopulateList(const std::wstring& filter = L"");
@@ -44,6 +47,8 @@ private:
     ClipType     m_previewType   = ClipType::Text;
     bool         m_previewPinned = false;
     int          m_previewIndex  = -1;
+    bool m_compactMode    = false;
+    bool m_showTimestamps = true;
 
     static constexpr int W        = 880;
     static constexpr int H        = 580;
