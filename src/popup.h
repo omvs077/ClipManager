@@ -15,8 +15,8 @@ public:
     std::function<void(const std::wstring&)> OnOpenUrl;
     std::function<void(const std::wstring&)> OnOpenPath;
 
-    void SetCompactMode(bool compact)     { m_compactMode = compact; }
-    void SetShowTimestamps(bool show)     { m_showTimestamps = show; }
+    void SetCompactMode(bool compact)  { m_compactMode = compact; }
+    void SetShowTimestamps(bool show)  { m_showTimestamps = show; }
 
 private:
     void PositionNearCursor();
@@ -37,19 +37,20 @@ private:
     std::vector<ClipEntry> m_history;
     std::vector<int>       m_filtered;
     int                    m_selected = 0;
-    time_t m_previewTimestamp = 0;
-
-    RECT m_quickActionRect = {};
 
     std::wstring m_searchText;
-    std::wstring m_previewImagePath;
 
     std::wstring m_previewText;
     ClipType     m_previewType   = ClipType::Text;
     bool         m_previewPinned = false;
     int          m_previewIndex  = -1;
+    time_t       m_previewTimestamp = 0;
+    std::wstring m_previewImagePath;
+
     bool m_compactMode    = false;
     bool m_showTimestamps = true;
+
+    RECT m_quickActionRect = {};
 
     static constexpr int W        = 880;
     static constexpr int H        = 580;

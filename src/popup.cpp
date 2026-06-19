@@ -1,8 +1,8 @@
 #include "popup.h"
 #include "detector.h"
+#include "imaging.h"
 #include <cwctype>
 #include <string>
-#include "imaging.h"
 
 constexpr wchar_t Popup::CLASS_NAME[];
 
@@ -26,6 +26,7 @@ static const COLORREF
     CLR_COLOR_T  = C(78, 201,176),
     CLR_PATH     = C(220,180,100),
     CLR_EMAIL    = C(180,120,220),
+    CLR_IMAGE    = C(255,140,180),
     CLR_LABEL_BG = C(38, 38, 48),
     CLR_WHITE    = C(255,255,255),
     CLR_HINT_KEY = C(160,160,170);
@@ -67,7 +68,7 @@ static COLORREF TypeColor(ClipType t) {
         case ClipType::Color:    return CLR_COLOR_T;
         case ClipType::FilePath: return CLR_PATH;
         case ClipType::Email:    return CLR_EMAIL;
-        case ClipType::Image:    return C(255,140,180);
+        case ClipType::Image:    return CLR_IMAGE;
         default:                 return CLR_DIM;
     }
 }
@@ -83,7 +84,6 @@ static std::wstring RelativeTime(time_t ts) {
     if (diff < 86400)       return std::to_wstring(diff/3600) + L" hr ago";
     if (diff < 86400*7)     return std::to_wstring(diff/86400) + L" days ago";
 
-    // Older — show actual date
     tm t;
     localtime_s(&t, &ts);
     wchar_t buf[32];
@@ -153,7 +153,6 @@ bool Popup::Create(HINSTANCE hInst) {
         nullptr, nullptr, hInst, this);
     if (!m_hwnd) return false;
 
-    // Hidden edit for search input capture
     m_search = CreateWindowExW(
         0, L"EDIT", L"",
         WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
@@ -167,7 +166,6 @@ bool Popup::Create(HINSTANCE hInst) {
     return true;
 }
 
-// ── SearchProc subclass ──────────────────────────────────────────
 LRESULT CALLBACK Popup::SearchProc(HWND hwnd, UINT msg, WPARAM wParam,
     LPARAM lParam, UINT_PTR, DWORD_PTR data) {
     Popup* self = reinterpret_cast<Popup*>(data);
@@ -208,7 +206,6 @@ LRESULT CALLBACK Popup::SearchProc(HWND hwnd, UINT msg, WPARAM wParam,
         InvalidateRect(self->m_hwnd, nullptr, FALSE);
         return r;
     }
-    // Dark background for edit
     if (msg == WM_CTLCOLOREDIT) {
         HDC hdc = (HDC)wParam;
         SetBkColor(hdc, BG_SEARCH);
@@ -218,7 +215,6 @@ LRESULT CALLBACK Popup::SearchProc(HWND hwnd, UINT msg, WPARAM wParam,
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
-// ── Show / Hide ──────────────────────────────────────────────────
 void Popup::Show(const std::vector<ClipEntry>& history) {
     m_history  = history;
     m_selected = 0;
@@ -253,7 +249,6 @@ void Popup::PositionNearCursor() {
     SetWindowPos(m_hwnd, HWND_TOPMOST, x, y, W, H, 0);
 }
 
-// ── Data ─────────────────────────────────────────────────────────
 void Popup::PopulateList(const std::wstring& filter) {
     m_filtered.clear();
     for (int pass = 0; pass < 2; pass++) {
@@ -279,11 +274,11 @@ void Popup::PopulateList(const std::wstring& filter) {
 void Popup::UpdatePreview(int historyIndex) {
     if (historyIndex < 0 || historyIndex >= (int)m_history.size()) return;
     const ClipEntry& e = m_history[historyIndex];
-    m_previewText   = e.text;
-    m_previewType   = e.type;
-    m_previewPinned = e.pinned;
-    m_previewIndex  = historyIndex;
-    m_previewTimestamp  = e.timestamp;
+    m_previewText       = e.text;
+    m_previewType        = e.type;
+    m_previewPinned       = e.pinned;
+    m_previewIndex         = historyIndex;
+    m_previewTimestamp    = e.timestamp;
     m_previewImagePath    = e.imagePath;
 }
 
@@ -323,38 +318,29 @@ std::wstring Popup::GetTypeName(ClipType type) {
     }
 }
 
-
-// ── Paint: Left Panel (list) ─────────────────────────────────────
 void Popup::PaintLeftPanel(HDC hdc) {
-    // Background
     RECT rc = {0, 0, LEFT_W, H};
     FillRect(hdc, &rc, hBrLeft);
 
-    // Search bar area
     RECT srch = {0, 0, LEFT_W, SEARCH_H};
     FillRect(hdc, &srch, hBrDark);
 
-    // Search icon
     SelectObject(hdc, hFontIcon);
     SetTextColor(hdc, CLR_DIM);
     SetBkMode(hdc, TRANSPARENT);
     TextOutW(hdc, 16, 16, L"\U0001F50D", 2);
 
-    // Search placeholder / typed text
     if (m_searchText.empty()) {
         DrawTextLine(hdc, L"Type to search...",
             {56, 14, LEFT_W-12, 38}, CLR_DIM, hFontUI);
     }
 
-    // Separator under search
     HLine(hdc, 0, LEFT_W, SEARCH_H, CLR_BORDER);
 
-    // List items
     int listTop = SEARCH_H;
     int itemHeight = m_compactMode ? 40 : ITEM_H;
-    int visibleItems = (H - SEARCH_H - HINT_H) / itemHeight;   
+    int visibleItems = (H - SEARCH_H - HINT_H) / itemHeight;
 
-    // Scroll offset
     int startIdx = 0;
     if (m_selected >= visibleItems)
         startIdx = m_selected - visibleItems + 1;
@@ -368,13 +354,11 @@ void Popup::PaintLeftPanel(HDC hdc) {
         int y = listTop + vi * itemHeight;
         RECT itemRc = {0, y, LEFT_W, y + itemHeight};
 
-        // Item background
         if (sel)
             FillRect(hdc, &itemRc, hBrSel);
         else
             FillRect(hdc, &itemRc, hBrItem);
 
-        // Left accent bar for selected
         if (sel) {
             RECT accent = {0, y, 3, y + itemHeight};
             HBRUSH hAcc = CreateSolidBrush(CLR_WHITE);
@@ -382,21 +366,18 @@ void Popup::PaintLeftPanel(HDC hdc) {
             DeleteObject(hAcc);
         }
 
-        // Type icon
         SelectObject(hdc, hFontSmall);
         SetTextColor(hdc, sel ? CLR_WHITE : TypeColor(e.type));
         SetBkMode(hdc, TRANSPARENT);
         std::wstring icon = TypeIcon(e.type);
         TextOutW(hdc, 12, y + 18, icon.c_str(), (int)icon.size());
 
-        // Pin star
         if (e.pinned) {
             SelectObject(hdc, hFontSmall);
             SetTextColor(hdc, CLR_PIN);
             TextOutW(hdc, LEFT_W - 22, y + 18, L"\u2605", 1);
         }
 
-        // Preview text (first line)
         std::wstring preview = e.text.substr(0, 80);
         auto nl = preview.find_first_of(L"\r\n");
         if (nl != std::wstring::npos) preview = preview.substr(0, nl);
@@ -406,28 +387,24 @@ void Popup::PaintLeftPanel(HDC hdc) {
             sel ? CLR_WHITE : CLR_TEXT, hFontUI,
             DT_LEFT | DT_TOP | DT_SINGLELINE | DT_END_ELLIPSIS);
 
-        // Sub-line: type name
         std::wstring sub = GetTypeName(e.type);
-            if (m_showTimestamps) {
-                sub += L"  \u2022  " + RelativeTime(e.timestamp);
-            }
+        if (m_showTimestamps) {
+            sub += L"  \u2022  " + RelativeTime(e.timestamp);
+        }
         RECT subRc = {34, y + 30, LEFT_W - 28, y + itemHeight - 4};
         DrawTextLine(hdc, sub, subRc,
             sel ? C(180,200,255) : CLR_DIM, hFontSmall,
             DT_LEFT | DT_TOP | DT_SINGLELINE);
 
-        // Row separator
         if (!sel)
             HLine(hdc, 8, LEFT_W - 8, y + itemHeight - 1, CLR_SEP);
     }
 
-    // Hint bar
     RECT hintRc = {0, H - HINT_H, LEFT_W, H};
     FillRect(hdc, &hintRc, hBrHint);
     HLine(hdc, 0, LEFT_W, H - HINT_H, CLR_BORDER);
 
     auto Key = [&](int x, int y, const wchar_t* k, const wchar_t* label) {
-        // Key badge
         SIZE sz; SelectObject(hdc, hFontSmall);
         GetTextExtentPoint32W(hdc, k, (int)wcslen(k), &sz);
         RECT krc = {x, y+2, x + sz.cx + 8, y + sz.cy + 4};
@@ -436,7 +413,6 @@ void Popup::PaintLeftPanel(HDC hdc) {
         SetTextColor(hdc, CLR_HINT_KEY);
         SetBkMode(hdc, TRANSPARENT);
         TextOutW(hdc, x+4, y+3, k, (int)wcslen(k));
-        // Label
         SetTextColor(hdc, CLR_DIM);
         TextOutW(hdc, krc.right + 4, y+3, label, (int)wcslen(label));
     };
@@ -447,7 +423,6 @@ void Popup::PaintLeftPanel(HDC hdc) {
     Key(196,H - HINT_H + 9, L"Esc",    L"Close");
 }
 
-// ── Paint: Right Panel (preview) ────────────────────────────────
 void Popup::PaintRightPanel(HDC hdc) {
     int rx = LEFT_W + 1;
     RECT rc = {rx, 0, W, H};
@@ -460,10 +435,8 @@ void Popup::PaintRightPanel(HDC hdc) {
         return;
     }
 
-    int rw = W - rx;
     int y  = 20;
 
-    // ── Type badge ───────────────────────────────────────────────
     std::wstring typeName = GetTypeName(m_previewType);
     COLORREF typeClr = TypeColor(m_previewType);
     SelectObject(hdc, hFontSmall);
@@ -476,7 +449,6 @@ void Popup::PaintRightPanel(HDC hdc) {
     SetBkMode(hdc, TRANSPARENT);
     TextOutW(hdc, rx+28, y+3, typeName.c_str(), (int)typeName.size());
 
-    // ── Quick action button ─────────────────────────────────────
     m_quickActionRect = {0,0,0,0};
     std::wstring actionLabel;
     if      (m_previewType == ClipType::URL)      actionLabel = L"Open in Browser";
@@ -492,12 +464,11 @@ void Popup::PaintRightPanel(HDC hdc) {
         DeleteObject(hActBg);
         SetTextColor(hdc, RGB(255,255,255));
         TextOutW(hdc, ax+10, y+3, actionLabel.c_str(), (int)actionLabel.size());
-        m_quickActionRect = actRc; // store in WINDOW coordinates, not panel-relative
+        m_quickActionRect = actRc;
     }
 
     y += tsz.cy + 16;
 
-    // ── Preview: image or text ────────────────────────────────────
     if (m_previewType == ClipType::Image && !m_previewImagePath.empty()) {
         HBITMAP hThumb = Imaging::LoadThumbnail(m_previewImagePath, 380, 260);
         if (hThumb) {
@@ -528,11 +499,9 @@ void Popup::PaintRightPanel(HDC hdc) {
         y += 270;
     }
 
-    // ── Separator ────────────────────────────────────────────────
     HLine(hdc, rx+20, W-20, y, CLR_BORDER);
     y += 16;
 
-    // ── Metadata rows ────────────────────────────────────────────
     auto MetaRow = [&](const wchar_t* label, const std::wstring& value) {
         RECT lrc = {rx+20, y, rx+120, y+20};
         RECT vrc = {rx+130, y, W-20,  y+20};
@@ -544,16 +513,16 @@ void Popup::PaintRightPanel(HDC hdc) {
 
     MetaRow(L"Type",       GetTypeName(m_previewType));
     MetaRow(L"Copied",     RelativeTime(m_previewTimestamp));
-    MetaRow(L"Characters", std::to_wstring(m_previewText.size()));
-
-    int lines = 1;
-    for (wchar_t c : m_previewText) if (c == L'\n') lines++;
-    MetaRow(L"Lines",      std::to_wstring(lines));
+    if (m_previewType != ClipType::Image) {
+        MetaRow(L"Characters", std::to_wstring(m_previewText.size()));
+        int lines = 1;
+        for (wchar_t c : m_previewText) if (c == L'\n') lines++;
+        MetaRow(L"Lines",      std::to_wstring(lines));
+    }
 
     if (m_previewPinned)
         MetaRow(L"Pinned", L"\u2605 Yes");
 
-    // ── Color preview swatch ─────────────────────────────────────
     if (m_previewType == ClipType::Color) {
         y += 8;
         std::wstring hex = m_previewText;
@@ -577,12 +546,10 @@ void Popup::PaintRightPanel(HDC hdc) {
         }
     }
 
-    // ── Bottom action bar ────────────────────────────────────────
     RECT actRc = {rx, H-HINT_H, W, H};
     FillRect(hdc, &actRc, hBrHint);
     HLine(hdc, rx, W, H-HINT_H, CLR_BORDER);
 
-    // "Press Enter to paste" hint
     DrawTextLine(hdc, L"\u21B5  Paste to active app",
         {rx+20, H-HINT_H+9, W-20, H-8},
         CLR_DIM, hFontSmall, DT_LEFT|DT_TOP|DT_SINGLELINE);
@@ -596,7 +563,6 @@ void Popup::HandleQuickAction() {
         if (OnOpenPath) OnOpenPath(m_previewText);
     }
     else if (m_previewType == ClipType::Color) {
-        // Copy hex to clipboard directly via the OS clipboard
         if (OpenClipboard(m_hwnd)) {
             EmptyClipboard();
             size_t bytes = (m_previewText.size()+1) * sizeof(wchar_t);
@@ -612,7 +578,6 @@ void Popup::HandleQuickAction() {
     }
 }
 
-// ── WndProc ──────────────────────────────────────────────────────
 LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     Popup* self = nullptr;
     if (msg == WM_NCCREATE) {
@@ -631,20 +596,15 @@ LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
 
-        // Double-buffer to avoid flicker
         RECT rc; GetClientRect(hwnd, &rc);
         HDC memDC = CreateCompatibleDC(hdc);
         HBITMAP bmp = CreateCompatibleBitmap(hdc, W, H);
         HBITMAP old = (HBITMAP)SelectObject(memDC, bmp);
 
         self->PaintLeftPanel(memDC);
-
-        // Divider
         VLine(memDC, LEFT_W, 0, H, CLR_BORDER);
-
         self->PaintRightPanel(memDC);
 
-        // Outer border
         HPEN bp = CreatePen(PS_SOLID,1,CLR_BORDER);
         HPEN bo = (HPEN)SelectObject(memDC,bp);
         SelectObject(memDC, GetStockObject(NULL_BRUSH));
@@ -670,7 +630,6 @@ LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         int mx = LOWORD(lParam);
         int my = HIWORD(lParam);
 
-        // Check quick action button first
         if (self->m_quickActionRect.right > self->m_quickActionRect.left) {
             RECT& r = self->m_quickActionRect;
             if (mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) {

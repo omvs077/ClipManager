@@ -28,7 +28,6 @@ bool Imaging::HasImage() {
            IsClipboardFormatAvailable(CF_BITMAP);
 }
 
-// Find the PNG encoder CLSID
 static bool GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
     UINT num = 0, size = 0;
     GetImageEncodersSize(&num, &size);
@@ -69,13 +68,11 @@ std::wstring Imaging::SaveClipboardImage(size_t maxBytes) {
 
     if (!hBitmap) return L"";
 
-    // Wrap in GDI+ Bitmap
     Bitmap bmp(hBitmap, nullptr);
     DeleteObject(hBitmap);
 
     if (bmp.GetWidth() == 0 || bmp.GetHeight() == 0) return L"";
 
-    // Generate unique filename
     wchar_t filename[64];
     swprintf_s(filename, L"clip_%lld.png", (long long)time(nullptr));
     std::wstring fullPath = GetImageDir() + L"\\" + filename;
@@ -86,7 +83,6 @@ std::wstring Imaging::SaveClipboardImage(size_t maxBytes) {
     Status st = bmp.Save(fullPath.c_str(), &pngClsid, nullptr);
     if (st != Ok) return L"";
 
-    // Check resulting file size against cap
     HANDLE hFile = CreateFileW(fullPath.c_str(), GENERIC_READ, FILE_SHARE_READ,
         nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hFile != INVALID_HANDLE_VALUE) {
@@ -95,7 +91,7 @@ std::wstring Imaging::SaveClipboardImage(size_t maxBytes) {
         CloseHandle(hFile);
         if ((size_t)size.QuadPart > maxBytes) {
             DeleteFileW(fullPath.c_str());
-            return L""; // too large, reject
+            return L"";
         }
     }
 
@@ -124,4 +120,30 @@ HBITMAP Imaging::LoadThumbnail(const std::wstring& path, int maxW, int maxH) {
     HBITMAP hBitmap = nullptr;
     thumb.GetHBITMAP(Color(255,255,255), &hBitmap);
     return hBitmap;
+}
+
+void Imaging::DeleteImage(const std::wstring& path) {
+    if (!path.empty())
+        DeleteFileW(path.c_str());
+}
+
+void Imaging::SweepOrphans(const std::vector<ClipEntry>& history) {
+    std::wstring dir = GetImageDir();
+    std::wstring pattern = dir + L"\\*.png";
+
+    WIN32_FIND_DATAW fd;
+    HANDLE hFind = FindFirstFileW(pattern.c_str(), &fd);
+    if (hFind == INVALID_HANDLE_VALUE) return;
+
+    do {
+        std::wstring fullPath = dir + L"\\" + fd.cFileName;
+        bool referenced = false;
+        for (const auto& e : history) {
+            if (e.imagePath == fullPath) { referenced = true; break; }
+        }
+        if (!referenced)
+            DeleteFileW(fullPath.c_str());
+    } while (FindNextFileW(hFind, &fd));
+
+    FindClose(hFind);
 }

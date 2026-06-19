@@ -53,8 +53,8 @@ enum class ClipType {
 
 struct ClipEntry {
     std::wstring text;
-    ClipType     type   = ClipType::Text;
-    bool         pinned = false;
+    ClipType     type      = ClipType::Text;
+    bool         pinned    = false;
     time_t       timestamp = 0;
     std::wstring imagePath;
 };

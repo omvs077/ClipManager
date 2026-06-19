@@ -18,10 +18,6 @@ set(SOURCES
 add_executable(ClipManager WIN32 ${SOURCES} resources/resource.rc)
 
 target_link_libraries(ClipManager PRIVATE
-    user32 shell32 ole32 gdi32 comctl32 shlwapi comdlg32
-)
-
-target_link_libraries(ClipManager PRIVATE
     user32 shell32 ole32 gdi32 comctl32 shlwapi comdlg32 gdiplus
 )
 
@@ -38,10 +34,5 @@ target_compile_definitions(ClipManager PRIVATE
 
 if(MSVC)
     target_compile_options(ClipManager PRIVATE /W4 /MP)
-    target_link_options(ClipManager PRIVATE
-    /SUBSYSTEM:WINDOWS
-    /MANIFESTUAC:"level='asInvoker' uiAccess='false'"
-    )
-
-    target_sources(ClipManager PRIVATE resources/app.manifest)
+    target_link_options(ClipManager PRIVATE /SUBSYSTEM:WINDOWS)
 endif()

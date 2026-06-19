@@ -10,6 +10,16 @@
 #pragma comment(lib, "gdiplus.lib")
 using namespace Gdiplus;
 
+static std::vector<ClipEntry> g_history;
+static Tray     g_tray;
+static Popup    g_popup;
+static Settings g_settings;
+static bool     g_ignoreNextClipboard = false;
+
+static void OnClipboardUpdate(HWND hwnd);
+static void OnPopupSelect(HWND hwnd, int index);
+static void ApplyAutoDelete(int days);
+
 static void ShowToast(HWND hwnd, const std::wstring& text) {
     NOTIFYICONDATAW nid = {};
     nid.cbSize = sizeof(nid);
@@ -24,88 +34,6 @@ static void ShowToast(HWND hwnd, const std::wstring& text) {
     wcscpy_s(nid.szInfo, preview.c_str());
 
     Shell_NotifyIconW(NIM_MODIFY, &nid);
-}
-
-static std::vector<ClipEntry> g_history;
-static Tray  g_tray;
-static Popup g_popup;
-static Settings g_settings;
-static bool  g_ignoreNextClipboard = false;
-
-static void OnClipboardUpdate(HWND hwnd);
-static void OnPopupSelect(HWND hwnd, int index);
-static void ApplyAutoDelete(int days);
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-    
-    case WM_CREATE:
-        RegisterHotKey(hwnd, HOTKEY_SHOW,  MOD_WIN | MOD_NOREPEAT, 'V');
-        RegisterHotKey(hwnd, HOTKEY_PLAIN, MOD_WIN | MOD_SHIFT | MOD_NOREPEAT, 'V');
-        Clipboard::StartListening(hwnd);
-        Storage::LoadHistory(g_history);
-        ApplyAutoDelete(g_settings.Current.autoDeleteDays);
-        return 0;
-
-
-    case WM_CLIPBOARDUPDATE:
-        if (!g_ignoreNextClipboard)
-            OnClipboardUpdate(hwnd);
-        g_ignoreNextClipboard = false;
-        return 0;
-
-    case WM_HOTKEY:
-        if (wParam == HOTKEY_SHOW) {
-            if (g_popup.IsVisible()) g_popup.Hide();
-            else g_popup.Show(g_history);
-        }
-        return 0;
-
-    case WM_TRAY:
-        if (lParam == WM_RBUTTONUP || lParam == WM_LBUTTONUP)
-            g_tray.ShowContextMenu(hwnd);
-        return 0;
-
-    case WM_SHOW_POPUP:
-        g_popup.Show(g_history);
-        return 0;
-
-    case WM_CLOSE:
-        if (g_settings.Current.minimizeToTray) {
-            ShowWindow(hwnd, SW_HIDE);
-            return 0;
-        }
-        DestroyWindow(hwnd);
-        return 0;
-
-    case WM_DESTROY:
-        UnregisterHotKey(hwnd, HOTKEY_SHOW);
-        UnregisterHotKey(hwnd, HOTKEY_PLAIN);
-        Clipboard::StopListening(hwnd);
-        if (g_settings.Current.clearOnExit)
-            g_history.clear();
-        Storage::SaveHistory(g_history);
-        g_tray.Destroy();
-        PostQuitMessage(0);
-        return 0;
-    
-    case WM_SHOW_SETTINGS:
-        g_settings.Show();
-        return 0;
-
-    }
-    return DefWindowProcW(hwnd, msg, wParam, lParam);
-}
-
-static void ApplyAutoDelete(int days) {
-    if (days <= 0) return; // -1 = never
-    time_t cutoff = time(nullptr) - (days * 24 * 60 * 60);
-    g_history.erase(
-        std::remove_if(g_history.begin(), g_history.end(),
-            [cutoff](const ClipEntry& e) {
-                return !e.pinned && e.timestamp < cutoff;
-            }),
-        g_history.end());
 }
 
 static bool IsPasswordManagerActive() {
@@ -136,20 +64,101 @@ static bool IsPasswordManagerActive() {
     return false;
 }
 
+static void ApplyAutoDelete(int days) {
+    if (days <= 0) return;
+    time_t cutoff = time(nullptr) - (days * 24 * 60 * 60);
+
+    for (auto& e : g_history) {
+        if (!e.pinned && e.timestamp < cutoff && e.type == ClipType::Image) {
+            Imaging::DeleteImage(e.imagePath);
+        }
+    }
+
+    g_history.erase(
+        std::remove_if(g_history.begin(), g_history.end(),
+            [cutoff](const ClipEntry& e) {
+                return !e.pinned && e.timestamp < cutoff;
+            }),
+        g_history.end());
+}
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+    case WM_CREATE:
+        RegisterHotKey(hwnd, HOTKEY_SHOW,  MOD_WIN | MOD_NOREPEAT, 'V');
+        RegisterHotKey(hwnd, HOTKEY_PLAIN, MOD_WIN | MOD_SHIFT | MOD_NOREPEAT, 'V');
+        Clipboard::StartListening(hwnd);
+        Storage::LoadHistory(g_history);
+        ApplyAutoDelete(g_settings.Current.autoDeleteDays);
+        Imaging::SweepOrphans(g_history);
+        return 0;
+
+    case WM_CLIPBOARDUPDATE:
+        if (!g_ignoreNextClipboard)
+            OnClipboardUpdate(hwnd);
+        g_ignoreNextClipboard = false;
+        return 0;
+
+    case WM_HOTKEY:
+        if (wParam == HOTKEY_SHOW) {
+            if (g_popup.IsVisible()) g_popup.Hide();
+            else g_popup.Show(g_history);
+        }
+        return 0;
+
+    case WM_TRAY:
+        if (lParam == WM_RBUTTONUP || lParam == WM_LBUTTONUP)
+            g_tray.ShowContextMenu(hwnd);
+        return 0;
+
+    case WM_SHOW_POPUP:
+        g_popup.Show(g_history);
+        return 0;
+
+    case WM_SHOW_SETTINGS:
+        g_settings.Show();
+        return 0;
+
+    case WM_CLOSE:
+        if (g_settings.Current.minimizeToTray) {
+            ShowWindow(hwnd, SW_HIDE);
+            return 0;
+        }
+        DestroyWindow(hwnd);
+        return 0;
+
+    case WM_DESTROY:
+        UnregisterHotKey(hwnd, HOTKEY_SHOW);
+        UnregisterHotKey(hwnd, HOTKEY_PLAIN);
+        Clipboard::StopListening(hwnd);
+        if (g_settings.Current.clearOnExit) {
+            for (auto& e : g_history) {
+                if (e.type == ClipType::Image)
+                    Imaging::DeleteImage(e.imagePath);
+            }
+            g_history.clear();
+        }
+        Storage::SaveHistory(g_history);
+        g_tray.Destroy();
+        PostQuitMessage(0);
+        return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
 static void OnClipboardUpdate(HWND hwnd) {
     if (g_settings.Current.excludePasswords && IsPasswordManagerActive())
         return;
 
     // Check for image first
     if (g_settings.Current.saveImages && Imaging::HasImage()) {
-        // Guard against duplicate fires for the same clipboard image
         static time_t lastImageTime = 0;
         time_t now = time(nullptr);
         if (now - lastImageTime < 1) {
-            // Likely a duplicate WM_CLIPBOARDUPDATE for the same image — skip
-            return;
+            return; // duplicate fire guard
         }
         lastImageTime = now;
+
         std::wstring imgPath = Imaging::SaveClipboardImage(5 * 1024 * 1024); // 5MB cap
         if (!imgPath.empty()) {
             ClipEntry entry;
@@ -166,8 +175,13 @@ static void OnClipboardUpdate(HWND hwnd) {
             }
             g_history.insert(g_history.begin() + insertAt, entry);
 
-            if (g_history.size() > MAX_HISTORY)
+            if (g_history.size() > MAX_HISTORY) {
+                for (size_t i = MAX_HISTORY; i < g_history.size(); i++) {
+                    if (g_history[i].type == ClipType::Image)
+                        Imaging::DeleteImage(g_history[i].imagePath);
+                }
                 g_history.resize(MAX_HISTORY);
+            }
 
             Storage::SaveHistory(g_history);
             if (g_settings.Current.showNotifications)
@@ -203,8 +217,13 @@ static void OnClipboardUpdate(HWND hwnd) {
     }
     g_history.insert(g_history.begin() + insertAt, entry);
 
-    if (g_history.size() > MAX_HISTORY)
+    if (g_history.size() > MAX_HISTORY) {
+        for (size_t i = MAX_HISTORY; i < g_history.size(); i++) {
+            if (g_history[i].type == ClipType::Image)
+                Imaging::DeleteImage(g_history[i].imagePath);
+        }
         g_history.resize(MAX_HISTORY);
+    }
 
     Storage::SaveHistory(g_history);
 
@@ -215,11 +234,10 @@ static void OnClipboardUpdate(HWND hwnd) {
 static void OnPopupSelect(HWND hwnd, int index) {
     if (index < 0 || index >= (int)g_history.size()) return;
 
-    ClipEntry& selected = g_history[index];
+    ClipEntry selected = g_history[index];
     g_ignoreNextClipboard = true;
 
     if (selected.type == ClipType::Image) {
-        // Load PNG and put back on clipboard as CF_DIB
         Bitmap bmp(selected.imagePath.c_str());
         HBITMAP hBmp = nullptr;
         bmp.GetHBITMAP(Gdiplus::Color(255,255,255), &hBmp);
@@ -233,16 +251,15 @@ static void OnPopupSelect(HWND hwnd, int index) {
     }
 
     // Bubble to top
-    ClipEntry entry = selected;
     g_history.erase(g_history.begin() + index);
     int insertAt = 0;
-    if (!entry.pinned) {
+    if (!selected.pinned) {
         for (int i = 0; i < (int)g_history.size(); i++) {
             if (g_history[i].pinned) insertAt = i + 1;
             else break;
         }
     }
-    g_history.insert(g_history.begin() + insertAt, entry);
+    g_history.insert(g_history.begin() + insertAt, selected);
     Storage::SaveHistory(g_history);
 
     Sleep(50);
@@ -261,11 +278,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_WIN95_CLASSES };
     InitCommonControlsEx(&icc);
 
-    WNDCLASSEXW wc   = {};
-    wc.cbSize         = sizeof(wc);
-    wc.lpfnWndProc    = WndProc;
-    wc.hInstance      = hInst;
-    wc.lpszClassName  = L"ClipManagerMain";
+    WNDCLASSEXW wc = {};
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInst;
+    wc.lpszClassName = L"ClipManagerMain";
     RegisterClassExW(&wc);
 
     HWND hwnd = CreateWindowExW(0, L"ClipManagerMain", APP_NAME,
@@ -273,36 +290,27 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
         nullptr, nullptr, hInst, nullptr);
     if (!hwnd) return 1;
 
-    if (!g_tray.Create(hwnd, hInst)) return 1;
-    if (!g_popup.Create(hInst))      return 1;
+    if (!g_tray.Create(hwnd, hInst))   return 1;
+    if (!g_popup.Create(hInst))         return 1;
     if (!g_settings.Create(hInst))      return 1;
+
     g_popup.SetCompactMode(g_settings.Current.compactMode);
     g_popup.SetShowTimestamps(g_settings.Current.showTimestamps);
-    g_settings.Current.historyLimit    = MAX_HISTORY;
-    g_settings.Current.startWithWindows = true;
-
-    g_settings.OnSave = [](const AppSettings& s) {
-        if (s.historyLimit != -1 && (int)g_history.size() > s.historyLimit)
-            g_history.resize(s.historyLimit);
-        g_ignoreNextClipboard = s.pauseMonitoring;
-        ApplyAutoDelete(s.autoDeleteDays);
-        g_popup.SetCompactMode(s.compactMode);
-        g_popup.SetShowTimestamps(s.showTimestamps);
-        Storage::SaveHistory(g_history);
-    };
-
-    g_settings.OnClearHistory = []() {
-        g_history.clear();
-        Storage::SaveHistory(g_history);
-    };
-
-    g_settings.OnPauseToggle = [](bool paused) {
-        g_ignoreNextClipboard = paused;
-    };
 
     g_popup.OnSelect = [hwnd](int i) { OnPopupSelect(hwnd, i); };
-    g_popup.OnPin    = [](int)       { Storage::SaveHistory(g_history); };
-    g_popup.OnDelete = [](int)       { Storage::SaveHistory(g_history); };
+
+    g_popup.OnPin = [](int) {
+        Storage::SaveHistory(g_history);
+    };
+
+    g_popup.OnDelete = [](int index) {
+        if (index >= 0 && index < (int)g_history.size()) {
+            if (g_history[index].type == ClipType::Image)
+                Imaging::DeleteImage(g_history[index].imagePath);
+        }
+        Storage::SaveHistory(g_history);
+    };
+
     g_popup.OnOpenUrl = [](const std::wstring& url) {
         ShellExecuteW(nullptr, L"open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     };
@@ -312,11 +320,40 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
             (L"/select,\"" + path + L"\"").c_str(), nullptr, SW_SHOWNORMAL);
     };
 
+    g_settings.OnSave = [](const AppSettings& s) {
+        if (s.historyLimit != -1 && (int)g_history.size() > s.historyLimit) {
+            for (size_t i = s.historyLimit; i < g_history.size(); i++) {
+                if (g_history[i].type == ClipType::Image)
+                    Imaging::DeleteImage(g_history[i].imagePath);
+            }
+            g_history.resize(s.historyLimit);
+        }
+        g_ignoreNextClipboard = s.pauseMonitoring;
+        ApplyAutoDelete(s.autoDeleteDays);
+        g_popup.SetCompactMode(s.compactMode);
+        g_popup.SetShowTimestamps(s.showTimestamps);
+        Storage::SaveHistory(g_history);
+    };
+
+    g_settings.OnClearHistory = []() {
+        for (auto& e : g_history) {
+            if (e.type == ClipType::Image)
+                Imaging::DeleteImage(e.imagePath);
+        }
+        g_history.clear();
+        Storage::SaveHistory(g_history);
+    };
+
+    g_settings.OnPauseToggle = [](bool paused) {
+        g_ignoreNextClipboard = paused;
+    };
+
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
+
     CloseHandle(hMutex);
     return (int)msg.wParam;
 }

@@ -70,17 +70,14 @@ bool Storage::LoadHistory(std::vector<ClipEntry>& history) {
         entry.type   = static_cast<ClipType>(std::stoi(line.substr(p1+1, p2-p1-1)));
 
         if (p3 == std::wstring::npos) {
-            // Old format: pin|type|text
             entry.timestamp = time(nullptr);
             entry.text = Decode(line.substr(p2 + 1));
         } else {
             size_t p4 = line.find(L'|', p3 + 1);
             if (p4 == std::wstring::npos) {
-                // Format: pin|type|timestamp|text (no image field yet)
                 entry.timestamp = static_cast<time_t>(std::stoll(line.substr(p2+1, p3-p2-1)));
                 entry.text = Decode(line.substr(p3 + 1));
             } else {
-                // Newest format: pin|type|timestamp|imagePath|text
                 entry.timestamp = static_cast<time_t>(std::stoll(line.substr(p2+1, p3-p2-1)));
                 entry.imagePath = Decode(line.substr(p3+1, p4-p3-1));
                 entry.text = Decode(line.substr(p4 + 1));
