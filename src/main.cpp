@@ -5,6 +5,10 @@
 #include "storage.h"
 #include "detector.h"
 #include "settings.h"
+#include "imaging.h"
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
+using namespace Gdiplus;
 
 static void ShowToast(HWND hwnd, const std::wstring& text) {
     NOTIFYICONDATAW nid = {};
@@ -108,9 +112,6 @@ static bool IsPasswordManagerActive() {
     HWND fg = GetForegroundWindow();
     if (!fg) return false;
 
-    wchar_t title[256] = {};
-    GetWindowTextW(fg, title, 256);
-
     DWORD pid = 0;
     GetWindowThreadProcessId(fg, &pid);
 
@@ -139,25 +140,62 @@ static void OnClipboardUpdate(HWND hwnd) {
     if (g_settings.Current.excludePasswords && IsPasswordManagerActive())
         return;
 
+    // Check for image first
+    if (g_settings.Current.saveImages && Imaging::HasImage()) {
+        // Guard against duplicate fires for the same clipboard image
+        static time_t lastImageTime = 0;
+        time_t now = time(nullptr);
+        if (now - lastImageTime < 1) {
+            // Likely a duplicate WM_CLIPBOARDUPDATE for the same image — skip
+            return;
+        }
+        lastImageTime = now;
+        std::wstring imgPath = Imaging::SaveClipboardImage(5 * 1024 * 1024); // 5MB cap
+        if (!imgPath.empty()) {
+            ClipEntry entry;
+            entry.type      = ClipType::Image;
+            entry.imagePath = imgPath;
+            entry.text      = L"[Image]";
+            entry.pinned    = false;
+            entry.timestamp = time(nullptr);
+
+            int insertAt = 0;
+            for (int i = 0; i < (int)g_history.size(); i++) {
+                if (g_history[i].pinned) insertAt = i + 1;
+                else break;
+            }
+            g_history.insert(g_history.begin() + insertAt, entry);
+
+            if (g_history.size() > MAX_HISTORY)
+                g_history.resize(MAX_HISTORY);
+
+            Storage::SaveHistory(g_history);
+            if (g_settings.Current.showNotifications)
+                ShowToast(hwnd, L"Image copied");
+            return;
+        }
+    }
+
+    // Fall back to text handling
     std::wstring text = Clipboard::ReadText();
     if (text.empty()) return;
     if (!g_history.empty() && g_history.front().text == text) return;
 
-    // Remove duplicate
-    for (int i = 0; i < (int)g_history.size(); i++) {
-        if (g_history[i].text == text) {
-            g_history.erase(g_history.begin() + i);
-            break;
+    if (g_settings.Current.ignoreDuplicates) {
+        for (int i = 0; i < (int)g_history.size(); i++) {
+            if (g_history[i].text == text) {
+                g_history.erase(g_history.begin() + i);
+                break;
+            }
         }
     }
 
     ClipEntry entry;
-    entry.text   = text;
-    entry.type   = Detector::Detect(text);
-    entry.pinned = false;
+    entry.text      = text;
+    entry.type      = Detector::Detect(text);
+    entry.pinned    = false;
     entry.timestamp = time(nullptr);
 
-    // Insert after pinned items
     int insertAt = 0;
     for (int i = 0; i < (int)g_history.size(); i++) {
         if (g_history[i].pinned) insertAt = i + 1;
@@ -169,31 +207,42 @@ static void OnClipboardUpdate(HWND hwnd) {
         g_history.resize(MAX_HISTORY);
 
     Storage::SaveHistory(g_history);
+
     if (g_settings.Current.showNotifications)
-    ShowToast(hwnd, text);
+        ShowToast(hwnd, text);
 }
 
 static void OnPopupSelect(HWND hwnd, int index) {
     if (index < 0 || index >= (int)g_history.size()) return;
 
-    std::wstring text = g_history[index].text;
-    bool wasPinned    = g_history[index].pinned;
-
+    ClipEntry& selected = g_history[index];
     g_ignoreNextClipboard = true;
-    Clipboard::WriteText(hwnd, text);
 
-    // Bubble to top (after pinned items)
-    ClipEntry selected = g_history[index];
+    if (selected.type == ClipType::Image) {
+        // Load PNG and put back on clipboard as CF_DIB
+        Bitmap bmp(selected.imagePath.c_str());
+        HBITMAP hBmp = nullptr;
+        bmp.GetHBITMAP(Gdiplus::Color(255,255,255), &hBmp);
+        if (hBmp && OpenClipboard(hwnd)) {
+            EmptyClipboard();
+            SetClipboardData(CF_BITMAP, hBmp);
+            CloseClipboard();
+        }
+    } else {
+        Clipboard::WriteText(hwnd, selected.text);
+    }
+
+    // Bubble to top
+    ClipEntry entry = selected;
     g_history.erase(g_history.begin() + index);
-
     int insertAt = 0;
-    if (!selected.pinned) {
+    if (!entry.pinned) {
         for (int i = 0; i < (int)g_history.size(); i++) {
             if (g_history[i].pinned) insertAt = i + 1;
             else break;
         }
     }
-    g_history.insert(g_history.begin() + insertAt, selected);
+    g_history.insert(g_history.begin() + insertAt, entry);
     Storage::SaveHistory(g_history);
 
     Sleep(50);

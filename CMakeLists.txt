@@ -12,12 +12,17 @@ set(SOURCES
     src/storage.cpp
     src/detector.cpp
     src/settings.cpp
+    src/imaging.cpp
 )
 
 add_executable(ClipManager WIN32 ${SOURCES} resources/resource.rc)
 
 target_link_libraries(ClipManager PRIVATE
     user32 shell32 ole32 gdi32 comctl32 shlwapi comdlg32
+)
+
+target_link_libraries(ClipManager PRIVATE
+    user32 shell32 ole32 gdi32 comctl32 shlwapi comdlg32 gdiplus
 )
 
 target_include_directories(ClipManager PRIVATE src)

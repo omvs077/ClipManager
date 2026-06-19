@@ -2,6 +2,7 @@
 #include "detector.h"
 #include <cwctype>
 #include <string>
+#include "imaging.h"
 
 constexpr wchar_t Popup::CLASS_NAME[];
 
@@ -66,6 +67,7 @@ static COLORREF TypeColor(ClipType t) {
         case ClipType::Color:    return CLR_COLOR_T;
         case ClipType::FilePath: return CLR_PATH;
         case ClipType::Email:    return CLR_EMAIL;
+        case ClipType::Image:    return C(255,140,180);
         default:                 return CLR_DIM;
     }
 }
@@ -95,6 +97,7 @@ static std::wstring TypeIcon(ClipType t) {
         case ClipType::Color:    return L"\U0001F3A8";
         case ClipType::FilePath: return L"\U0001F4C1";
         case ClipType::Email:    return L"\U00002709";
+        case ClipType::Image:    return L"\U0001F5BC";
         default:                 return L"\U0001F4CB";
     }
 }
@@ -281,6 +284,7 @@ void Popup::UpdatePreview(int historyIndex) {
     m_previewPinned = e.pinned;
     m_previewIndex  = historyIndex;
     m_previewTimestamp  = e.timestamp;
+    m_previewImagePath    = e.imagePath;
 }
 
 void Popup::ConfirmSelection() {
@@ -314,6 +318,7 @@ std::wstring Popup::GetTypeName(ClipType type) {
         case ClipType::Color:    return L"Color";
         case ClipType::FilePath: return L"File Path";
         case ClipType::Email:    return L"Email";
+        case ClipType::Image:    return L"Image";
         default:                 return L"Text";
     }
 }
@@ -492,15 +497,36 @@ void Popup::PaintRightPanel(HDC hdc) {
 
     y += tsz.cy + 16;
 
-    // ── Preview text ─────────────────────────────────────────────
-    std::wstring preview = m_previewText.substr(0, 600);
-    RECT previewRc = {rx+20, y, W-20, y + 260};
-    SelectObject(hdc, hFontMono ? hFontMono : hFontUI);
-    SetTextColor(hdc, CLR_TEXT);
-    SetBkMode(hdc, TRANSPARENT);
-    DrawTextW(hdc, preview.c_str(), (int)preview.size(), &previewRc,
-        DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS);
-    y += 270;
+    // ── Preview: image or text ────────────────────────────────────
+    if (m_previewType == ClipType::Image && !m_previewImagePath.empty()) {
+        HBITMAP hThumb = Imaging::LoadThumbnail(m_previewImagePath, 380, 260);
+        if (hThumb) {
+            HDC memDC = CreateCompatibleDC(hdc);
+            HBITMAP old = (HBITMAP)SelectObject(memDC, hThumb);
+            BITMAP bm; GetObject(hThumb, sizeof(bm), &bm);
+
+            int imgX = rx + 20 + (380 - bm.bmWidth) / 2;
+            BitBlt(hdc, imgX, y, bm.bmWidth, bm.bmHeight, memDC, 0, 0, SRCCOPY);
+
+            SelectObject(memDC, old);
+            DeleteDC(memDC);
+            DeleteObject(hThumb);
+            y += 260 + 10;
+        } else {
+            DrawTextLine(hdc, L"Image preview unavailable",
+                {rx+20, y, W-20, y+30}, CLR_DIM, hFontUI);
+            y += 40;
+        }
+    } else {
+        std::wstring preview = m_previewText.substr(0, 600);
+        RECT previewRc = {rx+20, y, W-20, y + 260};
+        SelectObject(hdc, hFontMono ? hFontMono : hFontUI);
+        SetTextColor(hdc, CLR_TEXT);
+        SetBkMode(hdc, TRANSPARENT);
+        DrawTextW(hdc, preview.c_str(), (int)preview.size(), &previewRc,
+            DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS);
+        y += 270;
+    }
 
     // ── Separator ────────────────────────────────────────────────
     HLine(hdc, rx+20, W-20, y, CLR_BORDER);
@@ -654,11 +680,12 @@ LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         }
 
         if (mx < LEFT_W && my >= SEARCH_H && my < H - HINT_H) {
-            int visibleItems = (H - SEARCH_H - HINT_H) / ITEM_H;
+            int itemHeight = self->m_compactMode ? 40 : ITEM_H;
+            int visibleItems = (H - SEARCH_H - HINT_H) / itemHeight;
             int startIdx = 0;
             if (self->m_selected >= visibleItems)
                 startIdx = self->m_selected - visibleItems + 1;
-            int clicked = startIdx + (my - SEARCH_H) / ITEM_H;
+            int clicked = startIdx + (my - SEARCH_H) / itemHeight;
             if (clicked >= 0 && clicked < (int)self->m_filtered.size()) {
                 self->m_selected = clicked;
                 self->UpdatePreview(self->m_filtered[clicked]);

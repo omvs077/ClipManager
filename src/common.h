@@ -47,7 +47,8 @@ enum class ClipType {
     URL,
     Color,
     FilePath,
-    Email
+    Email,
+    Image
 };
 
 struct ClipEntry {
@@ -55,4 +56,5 @@ struct ClipEntry {
     ClipType     type   = ClipType::Text;
     bool         pinned = false;
     time_t       timestamp = 0;
+    std::wstring imagePath;
 };

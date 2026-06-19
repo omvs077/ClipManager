@@ -327,7 +327,7 @@ bool Settings::Create(HINSTANCE hInst) {
     AddTab(L"Privacy");
 
     // Per checklist: panel sits
-    RECT tabRc = {16, 44, 16+488, 44+400};
+    RECT tabRc = {16, 44, 16+488, 44+320};
 
     m_panels[0] = CreateTabGeneral(tabRc);
     m_panels[1] = CreateTabHistory(tabRc);

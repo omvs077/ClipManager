@@ -42,6 +42,7 @@ private:
     RECT m_quickActionRect = {};
 
     std::wstring m_searchText;
+    std::wstring m_previewImagePath;
 
     std::wstring m_previewText;
     ClipType     m_previewType   = ClipType::Text;
