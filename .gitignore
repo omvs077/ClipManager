@@ -26,3 +26,6 @@
 # OS generated files
 Thumbs.db
 Desktop.ini
+
+# Installer output
+ClipManager_Setup.exe

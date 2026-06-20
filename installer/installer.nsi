@@ -12,7 +12,7 @@ RequestExecutionLevel admin
 !define MUI_ICON "..\resources\icon.ico"
 !define MUI_UNICON "..\resources\icon.ico"
 !define MUI_WELCOMEPAGE_TITLE "Welcome to ClipManager Setup"
-!define MUI_WELCOMEPAGE_TEXT "ClipManager is a lightweight clipboard history manager.$\n$\nPress Win+V to open your clipboard history at any time."
+!define MUI_WELCOMEPAGE_TEXT "ClipManager is a lightweight clipboard history manager with image support, quick actions, and smart content detection.$\n$\nPress Win+V to open your clipboard history at any time."
 !define MUI_FINISHPAGE_RUN "$INSTDIR\ClipManager.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch ClipManager now"
 
@@ -28,11 +28,11 @@ RequestExecutionLevel admin
 !insertmacro MUI_LANGUAGE "English"
 
 ; Version info
-VIProductVersion "1.0.0.0"
+VIProductVersion "1.1.0.0"
 VIAddVersionKey "ProductName"     "ClipManager"
-VIAddVersionKey "ProductVersion"  "1.0.0"
+VIAddVersionKey "ProductVersion"  "1.1.0"
 VIAddVersionKey "FileDescription" "ClipManager Installer"
-VIAddVersionKey "LegalCopyright"  "2024"
+VIAddVersionKey "LegalCopyright"  "2024-2026"
 
 ;-----------------------------------------
 Section "Install"
@@ -83,7 +83,7 @@ Section "Install"
         "Publisher" "ClipManager"
     WriteRegStr HKLM \
         "Software\Microsoft\Windows\CurrentVersion\Uninstall\ClipManager" \
-        "DisplayVersion" "1.0.0"
+        "DisplayVersion" "1.1.0"
     WriteRegDWORD HKLM \
         "Software\Microsoft\Windows\CurrentVersion\Uninstall\ClipManager" \
         "NoModify" 1
@@ -122,7 +122,8 @@ Section "Uninstall"
     DeleteRegKey HKLM \
         "Software\Microsoft\Windows\CurrentVersion\Uninstall\ClipManager"
 
-    ; Remove saved history
+    ; Remove saved history and image cache
     Delete "$APPDATA\ClipManager\history.txt"
+    RMDir /r "$APPDATA\ClipManager\images"
     RMDir  "$APPDATA\ClipManager"
 SectionEnd
