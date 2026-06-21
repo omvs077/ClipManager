@@ -13,6 +13,7 @@ set(SOURCES
     src/detector.cpp
     src/settings.cpp
     src/imaging.cpp
+    src/wizard.cpp
 )
 
 add_executable(ClipManager WIN32 ${SOURCES} resources/resource.rc)

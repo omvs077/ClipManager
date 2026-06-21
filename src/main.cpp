@@ -7,6 +7,7 @@
 #include "settings.h"
 #include "imaging.h"
 #include <gdiplus.h>
+#include "wizard.h"
 #pragma comment(lib, "gdiplus.lib")
 using namespace Gdiplus;
 
@@ -14,6 +15,7 @@ static std::vector<ClipEntry> g_history;
 static Tray     g_tray;
 static Popup    g_popup;
 static Settings g_settings;
+static Wizard   g_wizard;
 static bool     g_ignoreNextClipboard = false;
 
 static void OnClipboardUpdate(HWND hwnd);
@@ -150,16 +152,15 @@ static void OnClipboardUpdate(HWND hwnd) {
     if (g_settings.Current.excludePasswords && IsPasswordManagerActive())
         return;
 
-    // Check for image first
     if (g_settings.Current.saveImages && Imaging::HasImage()) {
         static time_t lastImageTime = 0;
         time_t now = time(nullptr);
         if (now - lastImageTime < 1) {
-            return; // duplicate fire guard
+            return;
         }
         lastImageTime = now;
 
-        std::wstring imgPath = Imaging::SaveClipboardImage(5 * 1024 * 1024); // 5MB cap
+        std::wstring imgPath = Imaging::SaveClipboardImage(5 * 1024 * 1024);
         if (!imgPath.empty()) {
             ClipEntry entry;
             entry.type      = ClipType::Image;
@@ -190,7 +191,6 @@ static void OnClipboardUpdate(HWND hwnd) {
         }
     }
 
-    // Fall back to text handling
     std::wstring text = Clipboard::ReadText();
     if (text.empty()) return;
     if (!g_history.empty() && g_history.front().text == text) return;
@@ -250,7 +250,6 @@ static void OnPopupSelect(HWND hwnd, int index) {
         Clipboard::WriteText(hwnd, selected.text);
     }
 
-    // Bubble to top
     g_history.erase(g_history.begin() + index);
     int insertAt = 0;
     if (!selected.pinned) {
@@ -347,6 +346,28 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     g_settings.OnPauseToggle = [](bool paused) {
         g_ignoreNextClipboard = paused;
     };
+
+    if (IsFirstRun()) {
+        g_wizard.Create(hInst);
+        g_wizard.OnComplete = [](bool startup, int historyLimit) {
+            g_settings.Current.startWithWindows = startup;
+            g_settings.Current.historyLimit = historyLimit;
+            if (startup) {
+                wchar_t exePath[MAX_PATH];
+                GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+                HKEY hKey;
+                RegOpenKeyExW(HKEY_CURRENT_USER,
+                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                    0, KEY_SET_VALUE, &hKey);
+                std::wstring val = L"\"" + std::wstring(exePath) + L"\"";
+                RegSetValueExW(hKey, L"ClipManager", 0, REG_SZ,
+                    (const BYTE*)val.c_str(), (DWORD)((val.size()+1)*sizeof(wchar_t)));
+                RegCloseKey(hKey);
+            }
+            Storage::SaveHistory(g_history);
+        };
+        g_wizard.Show();
+    }
 
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) {
