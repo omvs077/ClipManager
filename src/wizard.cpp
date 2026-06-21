@@ -8,10 +8,10 @@ constexpr wchar_t Wizard::CLASS_NAME[];
 #define ID_BTN_SKIP      204
 
 static const COLORREF
-    C_BG    = RGB(250,250,252),
-    C_TEXT  = RGB(20, 20, 24),
-    C_DIM   = RGB(110,110,120),
-    C_ACCENT= RGB(40, 100,210);
+    C_BG    = RGB(248,250,252),
+    C_TEXT  = RGB(26, 37, 64),
+    C_DIM   = RGB(110,125,150),
+    C_ACCENT= RGB(61, 127,232);
 
 static HBRUSH hBrBg = nullptr;
 
@@ -32,7 +32,7 @@ bool Wizard::Create(HINSTANCE hInst) {
         WS_EX_TOPMOST,
         CLASS_NAME, L"Welcome to ClipManager",
         WS_POPUP | WS_CAPTION | WS_SYSMENU,
-        0, 0, 460, 420,
+        0, 0, 460, 480,
         nullptr, nullptr, hInst, this);
     if (!m_hwnd) return false;
 

@@ -30,13 +30,13 @@ constexpr wchar_t Settings::PANEL_CLASS[];
 
 // ── Palette ──────────────────────────────────────────────────────
 static const COLORREF
-    C_BG      = RGB(248,248,250),
-    C_PANEL   = RGB(252,252,253),
-    C_TEXT    = RGB(25, 25, 30),
-    C_DIM     = RGB(120,120,130),
-    C_BORDER  = RGB(222,222,228),
-    C_ACCENT  = RGB(50, 100,200),
-    C_BTN     = RGB(238,238,244);
+    C_BG      = RGB(248,250,252),
+    C_PANEL   = RGB(252,253,255),
+    C_TEXT    = RGB(26, 37, 64),
+    C_DIM     = RGB(110,125,150),
+    C_BORDER  = RGB(220,228,240),
+    C_ACCENT  = RGB(61, 127,232),
+    C_BTN     = RGB(236,242,250);
 
 static HBRUSH hBrBg    = nullptr;
 static HBRUSH hBrPanel = nullptr;

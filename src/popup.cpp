@@ -9,28 +9,29 @@ constexpr wchar_t Popup::CLASS_NAME[];
 // ── Palette ──────────────────────────────────────────────────────
 #define C(r,g,b) RGB(r,g,b)
 #define C(r,g,b) RGB(r,g,b)
+#define C(r,g,b) RGB(r,g,b)
 static const COLORREF
-    BG_DARK      = C(248,248,250),
-    BG_LEFT      = C(252,252,253),
+    BG_DARK      = C(248,250,252),
+    BG_LEFT      = C(252,253,255),
     BG_RIGHT     = C(255,255,255),
-    BG_ITEM      = C(252,252,253),
-    BG_ITEM_HOV  = C(238,238,242),
-    BG_ITEM_SEL  = C(50, 100, 210),
-    BG_SEARCH    = C(238,238,242),
-    BG_HINT      = C(244,244,247),
-    CLR_TEXT     = C(25, 25, 30),
-    CLR_DIM      = C(120,120,130),
-    CLR_BORDER   = C(222,222,228),
-    CLR_SEP      = C(232,232,238),
-    CLR_PIN      = C(200,140, 0),
-    CLR_URL      = C(20, 100,180),
+    BG_ITEM      = C(252,253,255),
+    BG_ITEM_HOV  = C(232,240,250),
+    BG_ITEM_SEL  = C(61, 127,232),
+    BG_SEARCH    = C(236,242,250),
+    BG_HINT      = C(242,246,251),
+    CLR_TEXT     = C(26, 37, 64),
+    CLR_DIM      = C(110,125,150),
+    CLR_BORDER   = C(220,228,240),
+    CLR_SEP      = C(232,238,248),
+    CLR_PIN      = C(230,160, 30),
+    CLR_URL      = C(40, 110,220),
     CLR_COLOR_T  = C(20, 150,130),
-    CLR_PATH     = C(170,120, 30),
-    CLR_EMAIL    = C(130, 70,170),
-    CLR_IMAGE    = C(200, 60,110),
-    CLR_LABEL_BG = C(238,238,244),
+    CLR_PATH     = C(180,120, 30),
+    CLR_EMAIL    = C(120, 70,180),
+    CLR_IMAGE    = C(91, 163,240),
+    CLR_LABEL_BG = C(232,240,250),
     CLR_WHITE    = C(255,255,255),
-    CLR_HINT_KEY = C(90, 90, 100);
+    CLR_HINT_KEY = C(80, 95, 120);
 
 static HBRUSH hBrDark, hBrLeft, hBrRight, hBrSearch,
               hBrSel, hBrItem, hBrHov, hBrHint;
@@ -409,7 +410,7 @@ void Popup::PaintLeftPanel(HDC hdc) {
         SIZE sz; SelectObject(hdc, hFontSmall);
         GetTextExtentPoint32W(hdc, k, (int)wcslen(k), &sz);
         RECT krc = {x, y+2, x + sz.cx + 8, y + sz.cy + 4};
-        HBRUSH kb = CreateSolidBrush(C(225,225,232));
+        HBRUSH kb = CreateSolidBrush(C(225,232,245));
         FillRect(hdc, &krc, kb); DeleteObject(kb);
         SetTextColor(hdc, CLR_HINT_KEY);
         SetBkMode(hdc, TRANSPARENT);
@@ -460,7 +461,7 @@ void Popup::PaintRightPanel(HDC hdc) {
         SIZE asz; GetTextExtentPoint32W(hdc, actionLabel.c_str(), (int)actionLabel.size(), &asz);
         int ax = badgeRc.right + 12;
         RECT actRc = {ax, y, ax + asz.cx + 20, y + tsz.cy + 6};
-        HBRUSH hActBg = CreateSolidBrush(RGB(45,90,170));
+        HBRUSH hActBg = CreateSolidBrush(RGB(61,127,232));
         FillRoundRect(hdc, actRc, 4, hActBg);
         DeleteObject(hActBg);
         SetTextColor(hdc, RGB(255,255,255));
