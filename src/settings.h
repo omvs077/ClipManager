@@ -2,31 +2,23 @@
 #include "common.h"
 #include <commctrl.h>
 
-enum class AppTheme { System, Light, Dark };
-
 struct AppSettings {
-    // General
     bool startWithWindows  = true;
     bool minimizeToTray    = true;
     bool showNotifications = false;
 
-    // History
-    int  historyLimit      = 500;   // -1 = unlimited
+    int  historyLimit      = 500;
     bool ignoreDuplicates  = true;
     bool saveImages        = true;
     bool saveFiles         = true;
-    int  autoDeleteDays    = 30;    // -1 = never
+    int  autoDeleteDays    = 30;
 
-    // Hotkeys (stored as strings for display)
     std::wstring hotkeyMain   = L"Win+V";
     std::wstring hotkeyLatest = L"Ctrl+Alt+V";
 
-    // Appearance
-    AppTheme theme       = AppTheme::System;
-    bool     compactMode = false;
-    bool     showTimestamps = true;
+    bool compactMode = false;
+    bool showTimestamps = true;
 
-    // Privacy
     bool pauseMonitoring    = false;
     bool excludePasswords   = true;
     bool clearOnExit        = false;
@@ -52,7 +44,6 @@ private:
     void ApplyStartup(bool enable);
     void PopulateControls();
 
-    // Tab panels
     HWND CreateTabGeneral(RECT rc);
     HWND CreateTabHistory(RECT rc);
     HWND CreateTabHotkeys(RECT rc);
@@ -74,12 +65,10 @@ private:
     HFONT m_hFontBold = nullptr;
     HFONT m_hFontSm   = nullptr;
 
-    // General tab controls
     HWND m_chkStartup = nullptr;
     HWND m_chkMinTray = nullptr;
     HWND m_chkNotify  = nullptr;
 
-    // History tab controls
     HWND m_cmbLimit      = nullptr;
     HWND m_chkDupes      = nullptr;
     HWND m_chkImages     = nullptr;
@@ -87,17 +76,13 @@ private:
     HWND m_cmbAutoDel    = nullptr;
     HWND m_btnClear      = nullptr;
 
-    // Appearance tab controls
-    HWND m_cmbTheme      = nullptr;
     HWND m_chkCompact    = nullptr;
     HWND m_chkTimestamps = nullptr;
 
-    // Privacy tab controls
     HWND m_chkPause      = nullptr;
     HWND m_chkExclPwd    = nullptr;
     HWND m_chkClearExit  = nullptr;
 
-    // Hotkey tab controls
     HWND m_hkMain   = nullptr;
     HWND m_hkLatest = nullptr;
 

@@ -8,10 +8,10 @@ constexpr wchar_t Wizard::CLASS_NAME[];
 #define ID_BTN_SKIP      204
 
 static const COLORREF
-    C_BG    = RGB(24, 24, 26),
-    C_TEXT  = RGB(230,230,235),
-    C_DIM   = RGB(140,140,150),
-    C_ACCENT= RGB(60, 120,220);
+    C_BG    = RGB(250,250,252),
+    C_TEXT  = RGB(20, 20, 24),
+    C_DIM   = RGB(110,110,120),
+    C_ACCENT= RGB(40, 100,210);
 
 static HBRUSH hBrBg = nullptr;
 
@@ -32,7 +32,7 @@ bool Wizard::Create(HINSTANCE hInst) {
         WS_EX_TOPMOST,
         CLASS_NAME, L"Welcome to ClipManager",
         WS_POPUP | WS_CAPTION | WS_SYSMENU,
-        0, 0, 460, 360,
+        0, 0, 460, 420,
         nullptr, nullptr, hInst, this);
     if (!m_hwnd) return false;
 
@@ -50,7 +50,7 @@ bool Wizard::Create(HINSTANCE hInst) {
         return hw;
     };
 
-    // ── Page 0: Welcome + startup toggle ───────────────────────
+    // ── Page 0 ──────────────────────────────────────────────────
     m_pages[0] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD|WS_VISIBLE, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[0], L"Welcome to ClipManager", 32, 32, 396, 36, m_hFontBig);
@@ -61,12 +61,12 @@ bool Wizard::Create(HINSTANCE hInst) {
 
     m_chkStartup = CreateWindowExW(0, L"BUTTON",
         L"Launch ClipManager when Windows starts",
-        WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,
+        WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX|WS_TABSTOP,
         32, 150, 396, 24, m_pages[0], (HMENU)ID_CHK_STARTUP, hInst, nullptr);
     SendMessageW(m_chkStartup, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     SendMessageW(m_chkStartup, BM_SETCHECK, BST_CHECKED, 0);
 
-    // ── Page 1: History limit ──────────────────────────────────
+    // ── Page 1 ──────────────────────────────────────────────────
     m_pages[1] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[1], L"How much history?", 32, 32, 396, 36, m_hFontBig);
@@ -75,9 +75,10 @@ bool Wizard::Create(HINSTANCE hInst) {
         L"this anytime in Settings.",
         32, 80, 396, 40, m_hFont);
 
+    // Combo box must be WS_VISIBLE from creation and use WS_TABSTOP
     m_cmbLimit = CreateWindowExW(0, L"COMBOBOX", L"",
-        WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST,
-        32, 140, 200, 26, m_pages[1], (HMENU)ID_CMB_LIMIT, hInst, nullptr);
+        WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL|WS_TABSTOP,
+        32, 140, 220, 200, m_pages[1], (HMENU)ID_CMB_LIMIT, hInst, nullptr);
     SendMessageW(m_cmbLimit, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     SendMessageW(m_cmbLimit, CB_ADDSTRING, 0, (LPARAM)L"100 items");
     SendMessageW(m_cmbLimit, CB_ADDSTRING, 0, (LPARAM)L"500 items");
@@ -85,7 +86,7 @@ bool Wizard::Create(HINSTANCE hInst) {
     SendMessageW(m_cmbLimit, CB_ADDSTRING, 0, (LPARAM)L"Unlimited");
     SendMessageW(m_cmbLimit, CB_SETCURSEL, 1, 0);
 
-    // ── Page 2: Ready / hotkey reminder ────────────────────────
+    // ── Page 2 ──────────────────────────────────────────────────
     m_pages[2] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[2], L"You're all set!", 32, 32, 396, 36, m_hFontBig);
@@ -99,12 +100,12 @@ bool Wizard::Create(HINSTANCE hInst) {
     // ── Buttons ─────────────────────────────────────────────────
     m_btnSkip = CreateWindowExW(0, L"BUTTON", L"Skip",
         WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
-        148, 310, 90, 32, m_hwnd, (HMENU)ID_BTN_SKIP, hInst, nullptr);
+        148, 360, 90, 32, m_hwnd, (HMENU)ID_BTN_SKIP, hInst, nullptr);
     SendMessageW(m_btnSkip, WM_SETFONT, (WPARAM)m_hFont, TRUE);
 
     m_btnNext = CreateWindowExW(0, L"BUTTON", L"Next",
         WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,
-        248, 310, 90, 32, m_hwnd, (HMENU)ID_BTN_NEXT, hInst, nullptr);
+        248, 360, 90, 32, m_hwnd, (HMENU)ID_BTN_NEXT, hInst, nullptr);
     SendMessageW(m_btnNext, WM_SETFONT, (WPARAM)m_hFont, TRUE);
 
     ShowPage(0);
@@ -140,7 +141,7 @@ void Wizard::Finish() {
     bool startup = SendMessageW(m_chkStartup, BM_GETCHECK, 0, 0) == BST_CHECKED;
     int limitSel = (int)SendMessageW(m_cmbLimit, CB_GETCURSEL, 0, 0);
     int limits[] = {100, 500, 1000, -1};
-    int limit = limits[limitSel < 4 ? limitSel : 1];
+    int limit = limits[limitSel < 4 && limitSel >= 0 ? limitSel : 1];
 
     MarkFirstRunDone();
     DestroyWindow(m_hwnd);

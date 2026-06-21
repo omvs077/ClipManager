@@ -30,13 +30,13 @@ constexpr wchar_t Settings::PANEL_CLASS[];
 
 // ── Palette ──────────────────────────────────────────────────────
 static const COLORREF
-    C_BG      = RGB(30, 30, 30),
-    C_PANEL   = RGB(32, 32, 34),
-    C_TEXT    = RGB(235,235,235),
-    C_DIM     = RGB(150,150,158),
-    C_BORDER  = RGB(55, 55, 60),
+    C_BG      = RGB(248,248,250),
+    C_PANEL   = RGB(252,252,253),
+    C_TEXT    = RGB(25, 25, 30),
+    C_DIM     = RGB(120,120,130),
+    C_BORDER  = RGB(222,222,228),
     C_ACCENT  = RGB(50, 100,200),
-    C_BTN     = RGB(45, 45, 50);
+    C_BTN     = RGB(238,238,244);
 
 static HBRUSH hBrBg    = nullptr;
 static HBRUSH hBrPanel = nullptr;
@@ -84,7 +84,6 @@ HWND Settings::MakeCombo(HWND parent, int id,
         WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
         x, y, w, h, parent, (HMENU)(UINT_PTR)id, m_hInst, nullptr);
     SendMessageW(hw, WM_SETFONT, (WPARAM)m_hFont, TRUE);
-    SetWindowTheme(hw, L"DarkMode_CFD", nullptr);
     return hw;
 }
 
@@ -225,20 +224,11 @@ HWND Settings::CreateTabAppearance(RECT rc) {
         rc.right-rc.left, rc.bottom-rc.top,
         m_hwnd, nullptr, m_hInst, nullptr);
 
-    MakeSectionHeader(p, m_hInst, m_hFontBold, L"Theme", 24, 16, 400);
-
-    MakeLabel(p, L"Color theme:", 32, 50, 220, 20);
-    m_cmbTheme = MakeCombo(p, ID_CMB_THEME, 270, 47, 160, 24);
-    SendMessageW(m_cmbTheme, CB_ADDSTRING, 0, (LPARAM)L"System Default");
-    SendMessageW(m_cmbTheme, CB_ADDSTRING, 0, (LPARAM)L"Light");
-    SendMessageW(m_cmbTheme, CB_ADDSTRING, 0, (LPARAM)L"Dark");
-    SendMessageW(m_cmbTheme, CB_SETCURSEL, 0, 0);
-
-    MakeSectionHeader(p, m_hInst, m_hFontBold, L"Display", 24, 94, 400);
+    MakeSectionHeader(p, m_hInst, m_hFontBold, L"Display", 24, 16, 400);
     m_chkCompact    = MakeCheck(p, L"Compact mode (smaller items)",
-        ID_CHK_COMPACT,    32, 120, 400, 24);
+        ID_CHK_COMPACT,    32, 42, 400, 24);
     m_chkTimestamps = MakeCheck(p, L"Show timestamps on clips",
-        ID_CHK_TIMESTAMPS, 32, 150, 400, 24);
+        ID_CHK_TIMESTAMPS, 32, 72, 400, 24);
 
     return p;
 }
@@ -312,7 +302,6 @@ bool Settings::Create(HINSTANCE hInst) {
         12, 12, 496, 390,
         m_hwnd, (HMENU)ID_TAB, hInst, nullptr);
     SendMessageW(m_tabs, WM_SETFONT, (WPARAM)m_hFont, TRUE);
-    SetWindowTheme(m_tabs, L"DarkMode_Explorer", nullptr);
 
     auto AddTab = [&](const wchar_t* text) {
         static int idx = 0;
@@ -388,7 +377,6 @@ void Settings::PopulateControls() {
     SendMessageW(m_chkFiles,  BM_SETCHECK,
         Current.saveFiles ? BST_CHECKED : BST_UNCHECKED, 0);
 
-    SendMessageW(m_cmbTheme, CB_SETCURSEL, (int)Current.theme, 0);
     SendMessageW(m_chkCompact, BM_SETCHECK,
         Current.compactMode ? BST_CHECKED : BST_UNCHECKED, 0);
     SendMessageW(m_chkTimestamps, BM_SETCHECK,
@@ -425,7 +413,6 @@ void Settings::SaveAndClose() {
     Current.saveFiles =
         SendMessageW(m_chkFiles,  BM_GETCHECK, 0, 0) == BST_CHECKED;
 
-    Current.theme = (AppTheme)SendMessageW(m_cmbTheme, CB_GETCURSEL, 0, 0);
     Current.compactMode =
         SendMessageW(m_chkCompact,    BM_GETCHECK, 0, 0) == BST_CHECKED;
     Current.showTimestamps =
