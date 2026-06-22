@@ -156,6 +156,40 @@ static void OnClipboardUpdate(HWND hwnd) {
     if (g_settings.Current.excludePasswords && IsPasswordManagerActive())
         return;
 
+    // Check for file drop (copied files/folders from Explorer)
+    if (g_settings.Current.saveFiles && Clipboard::HasFileDrop()) {
+        std::vector<std::wstring> paths = Clipboard::ReadFileDrop();
+        if (!paths.empty()) {
+            ClipEntry entry;
+            entry.type      = ClipType::FileRef;
+            entry.filePaths = paths;
+            entry.text      = paths.size() == 1 ? paths[0] :
+                (L"[" + std::to_wstring(paths.size()) + L" files]");
+            entry.pinned    = false;
+            entry.timestamp = time(nullptr);
+
+            int insertAt = 0;
+            for (int i = 0; i < (int)g_history.size(); i++) {
+                if (g_history[i].pinned) insertAt = i + 1;
+                else break;
+            }
+            g_history.insert(g_history.begin() + insertAt, entry);
+
+            if (g_history.size() > MAX_HISTORY) {
+                for (size_t i = MAX_HISTORY; i < g_history.size(); i++) {
+                    if (g_history[i].type == ClipType::Image)
+                        Imaging::DeleteImage(g_history[i].imagePath);
+                }
+                g_history.resize(MAX_HISTORY);
+            }
+
+            Storage::SaveHistory(g_history);
+            if (g_settings.Current.showNotifications)
+                ShowToast(hwnd, entry.text);
+            return;
+        }
+    }
+
     if (g_settings.Current.saveImages && Imaging::HasImage()) {
         static time_t lastImageTime = 0;
         time_t now = time(nullptr);
@@ -250,10 +284,11 @@ static void OnPopupSelect(HWND hwnd, int index) {
             SetClipboardData(CF_BITMAP, hBmp);
             CloseClipboard();
         }
+    } else if (selected.type == ClipType::FileRef) {
+        Clipboard::WriteFileDrop(hwnd, selected.filePaths);
     } else {
         Clipboard::WriteText(hwnd, selected.text);
     }
-
     g_history.erase(g_history.begin() + index);
     int insertAt = 0;
     if (!selected.pinned) {

@@ -72,6 +72,7 @@ static COLORREF TypeColor(ClipType t) {
         case ClipType::FilePath: return CLR_PATH;
         case ClipType::Email:    return CLR_EMAIL;
         case ClipType::Image:    return CLR_IMAGE;
+        case ClipType::FileRef:  return C(90, 140, 90);
         default:                 return CLR_DIM;
     }
 }
@@ -101,6 +102,7 @@ static std::wstring TypeIcon(ClipType t) {
         case ClipType::FilePath: return L"\U0001F4C1";
         case ClipType::Email:    return L"\U00002709";
         case ClipType::Image:    return L"\U0001F5BC";
+        case ClipType::FileRef:  return L"\U0001F4E6";
         default:                 return L"\U0001F4CB";
     }
 }
@@ -295,8 +297,8 @@ void Popup::UpdatePreview(int historyIndex) {
     m_previewIndex         = historyIndex;
     m_previewTimestamp    = e.timestamp;
     m_previewImagePath    = e.imagePath;
+    m_previewFilePaths    = e.filePaths;
 }
-
 void Popup::ConfirmSelection() {
     if (m_showingSnippets) {
         if (m_selected < 0 || !m_snippets || m_selected >= (int)m_snippets->size()) return;
@@ -336,6 +338,7 @@ std::wstring Popup::GetTypeName(ClipType type) {
         case ClipType::FilePath: return L"File Path";
         case ClipType::Email:    return L"Email";
         case ClipType::Image:    return L"Image";
+        case ClipType::FileRef:  return L"Files";
         default:                 return L"Text";
     }
 }
@@ -537,9 +540,6 @@ void Popup::ToggleSnippetsView() {
 void Popup::AddSnippetDialog() {
     if (!m_snippets) return;
 
-    wchar_t nameBuf[128] = {};
-    wchar_t textBuf[2048] = {};
-
     // Simple two-prompt flow using GetWindowText-style dialogs would need a real dialog box.
     // For now use a minimal inline input via two MessageBox-driven steps is poor UX;
     // instead create a tiny modal dialog.
@@ -686,6 +686,23 @@ void Popup::PaintRightPanel(HDC hdc) {
                 {rx+20, y, W-20, y+30}, CLR_DIM, hFontUI);
             y += 40;
         }
+    } else if (m_previewType == ClipType::FileRef) {
+        SelectObject(hdc, hFontMono ? hFontMono : hFontUI);
+        SetTextColor(hdc, CLR_TEXT);
+        SetBkMode(hdc, TRANSPARENT);
+        int listY = y;
+        for (size_t i = 0; i < m_previewFilePaths.size() && i < 8; i++) {
+            RECT fileRc = {rx+20, listY, W-20, listY+22};
+            DrawTextLine(hdc, m_previewFilePaths[i], fileRc, CLR_TEXT, hFontSmall,
+                DT_LEFT|DT_TOP|DT_SINGLELINE|DT_END_ELLIPSIS|DT_PATH_ELLIPSIS);
+            listY += 24;
+        }
+        if (m_previewFilePaths.size() > 8) {
+            std::wstring more = L"+ " + std::to_wstring(m_previewFilePaths.size() - 8) + L" more";
+            DrawTextLine(hdc, more, {rx+20, listY, W-20, listY+22}, CLR_DIM, hFontSmall);
+            listY += 24;
+        }
+        y = listY + 10;
     } else {
         std::wstring preview = m_previewText.substr(0, 600);
         RECT previewRc = {rx+20, y, W-20, y + 260};
@@ -711,12 +728,16 @@ void Popup::PaintRightPanel(HDC hdc) {
 
     MetaRow(L"Type",       GetTypeName(m_previewType));
     MetaRow(L"Copied",     RelativeTime(m_previewTimestamp));
-    if (m_previewType != ClipType::Image) {
+    if (m_previewType != ClipType::Image && m_previewType != ClipType::FileRef) {
         MetaRow(L"Characters", std::to_wstring(m_previewText.size()));
         int lines = 1;
         for (wchar_t c : m_previewText) if (c == L'\n') lines++;
         MetaRow(L"Lines",      std::to_wstring(lines));
     }
+
+    if (m_previewType == ClipType::FileRef) {
+    MetaRow(L"Files", std::to_wstring(m_previewFilePaths.size()));
+}
 
     if (m_previewPinned)
         MetaRow(L"Pinned", L"\u2605 Yes");

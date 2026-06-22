@@ -8,4 +8,8 @@ public:
     static std::wstring ReadText();
     static bool WriteText(HWND hwnd, const std::wstring& text);
     static bool WritePlainText(HWND hwnd, const std::wstring& text);
+
+    static bool HasFileDrop();
+    static std::vector<std::wstring> ReadFileDrop();
+    static bool WriteFileDrop(HWND hwnd, const std::vector<std::wstring>& paths);
 };

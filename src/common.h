@@ -48,7 +48,8 @@ enum class ClipType {
     Color,
     FilePath,
     Email,
-    Image
+    Image,
+    FileRef
 };
 
 struct ClipEntry {
@@ -57,6 +58,7 @@ struct ClipEntry {
     bool         pinned    = false;
     time_t       timestamp = 0;
     std::wstring imagePath;
+    std::vector<std::wstring> filePaths;
 };
 
 struct Snippet {

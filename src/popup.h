@@ -45,6 +45,7 @@ private:
 
     std::vector<ClipEntry> m_history;
     std::vector<int>       m_filtered;
+    std::vector<std::wstring> m_previewFilePaths;
     int                    m_selected = 0;
 
     std::wstring m_searchText;
@@ -68,6 +69,7 @@ private:
     static constexpr int HINT_H   = 36;
     static constexpr int ITEM_H   = 60;
     static constexpr int TAB_STRIP_H = 36;
+    
 
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK SearchProc(HWND, UINT, WPARAM, LPARAM,

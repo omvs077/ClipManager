@@ -31,6 +31,7 @@ std::wstring Detector::TypeLabel(ClipType type) {
         case ClipType::FilePath: return L"[PATH] ";
         case ClipType::Email:    return L"[EMAIL] ";
         case ClipType::Image:    return L"[IMAGE] ";
+        case ClipType::FileRef:  return L"[FILES] ";
         default:                 return L"";
     }
 }
