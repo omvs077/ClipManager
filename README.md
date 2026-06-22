@@ -1,19 +1,21 @@
 # ClipManager
 
-A fast, native Windows clipboard history manager built in C++/Win32. No Electron, no .NET runtime — just a lightweight tray app.
-ClipManager runs silently in your system tray, monitors clipboard changes using modern Windows APIs, and provides a quick-access popup window at your cursor position to search and paste your clipboard history.
+A fast, native Windows clipboard manager built in C++/Win32. No Electron, no .NET runtime — just a lightweight tray app.
 
 ![ClipManager](resources/screenshot.png)
 
 ## Features
 
-- **Clipboard history** — automatically tracks everything you copy, including images
-- **Smart detection** — auto-tags URLs, hex colors, file paths, and emails with quick actions (open in browser, open in Explorer, copy hex)
-- **Image support** — captures screenshots and copied images with thumbnail previews
-- **Global hotkey** — `Win+V` opens a searchable popup near your cursor
+- **Clipboard history** — automatically tracks everything you copy: text, images, files/folders
+- **Smart detection** — auto-tags URLs, hex colors, file paths, and emails with one-click quick actions (open in browser, open in Explorer, copy hex)
+- **Image support** — captures screenshots and copied images with thumbnail previews, auto-cleans orphaned files
+- **File & folder support** — copy files in Explorer, paste the real file back later — not just the path
+- **Snippets** — save reusable text (signatures, commands, templates) in a dedicated tab, separate from clipboard history
+- **Global hotkey** — `Ctrl+Shift+V` opens a searchable two-panel popup near your cursor
 - **Pin favorites** — keep important clips at the top forever
-- **Privacy controls** — exclude password managers, pause monitoring, auto-clear on exit
+- **Privacy controls** — exclude password managers, pause monitoring, clear on exit
 - **Auto-delete** — clean up clips older than N days
+- **First-run wizard** — quick 3-step setup on first launch
 - **System tray** — runs quietly in the background, starts with Windows
 
 ## Install
@@ -44,17 +46,32 @@ Binary will be at `build\Release\ClipManager.exe`.
 Right-click the tray icon for Settings, manual history view, or to exit.
 
 ## Architecture
+
+```
 src/
 ├── main.cpp        — WinMain, message loop, clipboard orchestration
-├── clipboard.cpp    — AddClipboardFormatListener wrapper, read/write
-├── popup.cpp        — Two-panel search UI (list + preview), owner-drawn
+├── clipboard.cpp    — AddClipboardFormatListener wrapper, text/file-drop read/write
+├── popup.cpp        — Two-panel search UI (list + preview), owner-drawn, snippets tab
 ├── tray.cpp         — Shell_NotifyIcon wrapper, context menu
 ├── settings.cpp     — Tabbed settings dialog
 ├── storage.cpp      — Plain-text history persistence
 ├── detector.cpp     — Regex-based content type detection
-└── imaging.cpp      — GDI+ image capture/thumbnail/cleanup
+├── imaging.cpp      — GDI+ image capture/thumbnail/cleanup
+├── snippets.cpp     — Reusable text snippet storage
+└── wizard.cpp       — First-run setup wizard
+```
 
 Uses `AddClipboardFormatListener` (Vista+) rather than the legacy `SetClipboardViewer` chain, avoiding the classic "one app crashes, clipboard breaks for everyone" bug.
+
+File/folder clips use `CF_HDROP` so pasted items are real files, not just text paths. Images are stored as PNGs in `%APPDATA%\ClipManager\images\`, with automatic orphan cleanup on startup and whenever history is trimmed or cleared.
+
+## Data storage
+
+- History: `%APPDATA%\ClipManager\history.txt`
+- Snippets: `%APPDATA%\ClipManager\snippets.txt`
+- Images: `%APPDATA%\ClipManager\images\`
+
+Uninstalling removes all of the above.
 
 ## License
 
