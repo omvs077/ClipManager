@@ -8,6 +8,7 @@
 #include "imaging.h"
 #include <gdiplus.h>
 #include "wizard.h"
+#include "snippets.h"
 #pragma comment(lib, "gdiplus.lib")
 using namespace Gdiplus;
 
@@ -17,6 +18,7 @@ static Popup    g_popup;
 static Settings g_settings;
 static Wizard   g_wizard;
 static bool     g_ignoreNextClipboard = false;
+static std::vector<Snippet> g_snippets;
 
 static void OnClipboardUpdate(HWND hwnd);
 static void OnPopupSelect(HWND hwnd, int index);
@@ -87,10 +89,11 @@ static void ApplyAutoDelete(int days) {
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
-        RegisterHotKey(hwnd, HOTKEY_SHOW,  MOD_WIN | MOD_NOREPEAT, 'V');
+        RegisterHotKey(hwnd, HOTKEY_SHOW,  MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 'V');
         RegisterHotKey(hwnd, HOTKEY_PLAIN, MOD_WIN | MOD_SHIFT | MOD_NOREPEAT, 'V');
         Clipboard::StartListening(hwnd);
         Storage::LoadHistory(g_history);
+        Snippets::Load(g_snippets);
         ApplyAutoDelete(g_settings.Current.autoDeleteDays);
         Imaging::SweepOrphans(g_history);
         return 0;
@@ -141,10 +144,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             g_history.clear();
         }
         Storage::SaveHistory(g_history);
+        Snippets::Save(g_snippets);
         g_tray.Destroy();
         PostQuitMessage(0);
         return 0;
-    }
+        }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
@@ -295,6 +299,23 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
 
     g_popup.SetCompactMode(g_settings.Current.compactMode);
     g_popup.SetShowTimestamps(g_settings.Current.showTimestamps);
+    g_popup.SetSnippets(&g_snippets);
+
+    g_popup.OnSnippetsChanged = []() {
+        Snippets::Save(g_snippets);
+    };
+
+    g_popup.OnPasteSnippet = [hwnd](const std::wstring& text) {
+        g_ignoreNextClipboard = true;
+        Clipboard::WriteText(hwnd, text);
+        Sleep(50);
+        INPUT inputs[4] = {};
+        inputs[0].type = INPUT_KEYBOARD; inputs[0].ki.wVk = VK_CONTROL;
+        inputs[1].type = INPUT_KEYBOARD; inputs[1].ki.wVk = 'V';
+        inputs[2].type = INPUT_KEYBOARD; inputs[2].ki.wVk = 'V';   inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+        inputs[3].type = INPUT_KEYBOARD; inputs[3].ki.wVk = VK_CONTROL; inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
+        SendInput(4, inputs, sizeof(INPUT));
+    };
 
     g_popup.OnSelect = [hwnd](int i) { OnPopupSelect(hwnd, i); };
 

@@ -14,6 +14,7 @@ set(SOURCES
     src/settings.cpp
     src/imaging.cpp
     src/wizard.cpp
+    src/snippets.cpp
 )
 
 add_executable(ClipManager WIN32 ${SOURCES} resources/resource.rc)
@@ -34,6 +35,6 @@ target_compile_definitions(ClipManager PRIVATE
 )
 
 if(MSVC)
-    target_compile_options(ClipManager PRIVATE /W4 /MP)
+    target_compile_options(ClipManager PRIVATE /W4)
     target_link_options(ClipManager PRIVATE /SUBSYSTEM:WINDOWS)
 endif()

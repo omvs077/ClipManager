@@ -8,12 +8,15 @@ public:
     void Hide();
     bool IsVisible() const;
     HWND GetHwnd() const { return m_hwnd; }
+    void SetSnippets(std::vector<Snippet>* snippets); // pointer, owned by main.cpp
 
+    std::function<void()> OnSnippetsChanged;
     std::function<void(int)> OnSelect;
     std::function<void(int)> OnPin;
     std::function<void(int)> OnDelete;
     std::function<void(const std::wstring&)> OnOpenUrl;
     std::function<void(const std::wstring&)> OnOpenPath;
+    std::function<void(const std::wstring&)> OnPasteSnippet;
 
     void SetCompactMode(bool compact)  { m_compactMode = compact; }
     void SetShowTimestamps(bool show)  { m_showTimestamps = show; }
@@ -29,6 +32,12 @@ private:
     void PaintRightPanel(HDC hdc);
     void HandleQuickAction();
     std::wstring GetTypeName(ClipType type);
+    std::vector<Snippet>* m_snippets = nullptr;
+    bool m_showingSnippets = false;
+    void ToggleSnippetsView();
+    void PaintSnippetTab(HDC hdc); // small tab strip above search box
+    void AddSnippetDialog();
+    void DeleteSnippetSelected();
 
     HWND      m_hwnd   = nullptr;
     HWND      m_search = nullptr;
@@ -58,6 +67,7 @@ private:
     static constexpr int SEARCH_H = 52;
     static constexpr int HINT_H   = 36;
     static constexpr int ITEM_H   = 60;
+    static constexpr int TAB_STRIP_H = 36;
 
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK SearchProc(HWND, UINT, WPARAM, LPARAM,

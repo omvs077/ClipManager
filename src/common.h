@@ -58,3 +58,8 @@ struct ClipEntry {
     time_t       timestamp = 0;
     std::wstring imagePath;
 };
+
+struct Snippet {
+    std::wstring name;
+    std::wstring text;
+};

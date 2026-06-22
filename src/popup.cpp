@@ -3,6 +3,7 @@
 #include "imaging.h"
 #include <cwctype>
 #include <string>
+#include "snippets.h"
 
 constexpr wchar_t Popup::CLASS_NAME[];
 
@@ -158,7 +159,7 @@ bool Popup::Create(HINSTANCE hInst) {
     m_search = CreateWindowExW(
         0, L"EDIT", L"",
         WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-        60, 14, LEFT_W - 80, 24,
+        60, 50, LEFT_W - 80, 24,
         m_hwnd, (HMENU)101, hInst, nullptr);
     SendMessageW(m_search, WM_SETFONT, (WPARAM)hFontUI, TRUE);
 
@@ -176,17 +177,22 @@ LRESULT CALLBACK Popup::SearchProc(HWND hwnd, UINT msg, WPARAM wParam,
         if (wParam == VK_RETURN)  { self->ConfirmSelection(); return 0; }
         if (wParam == VK_ESCAPE)  { self->Hide(); return 0; }
         if (wParam == VK_DOWN) {
-            if (self->m_selected < (int)self->m_filtered.size()-1) {
+            int count = self->m_showingSnippets
+                ? (self->m_snippets ? (int)self->m_snippets->size() : 0)
+                : (int)self->m_filtered.size();
+            if (self->m_selected < count - 1) {
                 self->m_selected++;
-                self->UpdatePreview(self->m_filtered[self->m_selected]);
+                if (!self->m_showingSnippets)
+                    self->UpdatePreview(self->m_filtered[self->m_selected]);
                 InvalidateRect(self->m_hwnd, nullptr, FALSE);
             }
             return 0;
         }
         if (wParam == VK_UP) {
-            if (self->m_selected > 0) {
+                    if (self->m_selected > 0) {
                 self->m_selected--;
-                self->UpdatePreview(self->m_filtered[self->m_selected]);
+                if (!self->m_showingSnippets)
+                    self->UpdatePreview(self->m_filtered[self->m_selected]);
                 InvalidateRect(self->m_hwnd, nullptr, FALSE);
             }
             return 0;
@@ -195,7 +201,13 @@ LRESULT CALLBACK Popup::SearchProc(HWND hwnd, UINT msg, WPARAM wParam,
             self->TogglePin(); return 0;
         }
         if (wParam == VK_DELETE && (GetKeyState(VK_CONTROL) & 0x8000)) {
-            self->DeleteSelected(); return 0;
+            if (self->m_showingSnippets) self->DeleteSnippetSelected();
+            else self->DeleteSelected();
+            return 0;
+        }
+        if (wParam == 'N' && (GetKeyState(VK_CONTROL) & 0x8000) && self->m_showingSnippets) {
+            self->AddSnippetDialog();
+            return 0;
         }
     }
     if (msg == WM_CHAR) {
@@ -220,6 +232,7 @@ LRESULT CALLBACK Popup::SearchProc(HWND hwnd, UINT msg, WPARAM wParam,
 void Popup::Show(const std::vector<ClipEntry>& history) {
     m_history  = history;
     m_selected = 0;
+    m_showingSnippets = false;
     SetWindowTextW(m_search, L"");
     m_searchText.clear();
     PopulateList();
@@ -285,6 +298,13 @@ void Popup::UpdatePreview(int historyIndex) {
 }
 
 void Popup::ConfirmSelection() {
+    if (m_showingSnippets) {
+        if (m_selected < 0 || !m_snippets || m_selected >= (int)m_snippets->size()) return;
+        std::wstring text = (*m_snippets)[m_selected].text;
+        Hide();
+        if (OnPasteSnippet) OnPasteSnippet(text);
+        return;
+    }
     if (m_selected < 0 || m_selected >= (int)m_filtered.size()) return;
     int idx = m_filtered[m_selected];
     Hide();
@@ -324,24 +344,55 @@ void Popup::PaintLeftPanel(HDC hdc) {
     RECT rc = {0, 0, LEFT_W, H};
     FillRect(hdc, &rc, hBrLeft);
 
-    RECT srch = {0, 0, LEFT_W, SEARCH_H};
+    // ── Tab strip: Clips | Snippets ──────────────────────────
+    RECT tabStrip = {0, 0, LEFT_W, TAB_STRIP_H};
+    FillRect(hdc, &tabStrip, hBrDark);
+
+    int halfW = LEFT_W / 2;
+    RECT clipsTabRc = {0, 0, halfW, TAB_STRIP_H};
+    RECT snipTabRc  = {halfW, 0, LEFT_W, TAB_STRIP_H};
+
+    SelectObject(hdc, hFontUI);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, m_showingSnippets ? CLR_DIM : CLR_TEXT);
+    DrawTextW(hdc, L"Clips", 5, &clipsTabRc, DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+    SetTextColor(hdc, m_showingSnippets ? CLR_TEXT : CLR_DIM);
+    DrawTextW(hdc, L"Snippets", 8, &snipTabRc, DT_CENTER|DT_VCENTER|DT_SINGLELINE);
+
+    int underlineY = TAB_STRIP_H - 2;
+    if (m_showingSnippets)
+        HLine(hdc, halfW, LEFT_W, underlineY, BG_ITEM_SEL);
+    else
+        HLine(hdc, 0, halfW, underlineY, BG_ITEM_SEL);
+    HLine(hdc, 0, LEFT_W, TAB_STRIP_H, CLR_BORDER);
+
+    if (m_showingSnippets) {
+        PaintSnippetTab(hdc);
+        return;
+    }
+
+    int off = TAB_STRIP_H; // vertical offset for everything below the tab strip
+
+    // Search bar area
+    RECT srch = {0, off, LEFT_W, off + (SEARCH_H - 0)};
     FillRect(hdc, &srch, hBrDark);
 
     SelectObject(hdc, hFontIcon);
     SetTextColor(hdc, CLR_DIM);
     SetBkMode(hdc, TRANSPARENT);
-    TextOutW(hdc, 16, 16, L"\U0001F50D", 2);
+    TextOutW(hdc, 16, off + 16, L"\U0001F50D", 2);
 
     if (m_searchText.empty()) {
         DrawTextLine(hdc, L"Type to search...",
-            {56, 14, LEFT_W-12, 38}, CLR_DIM, hFontUI);
+            {56, off + 14, LEFT_W-12, off + 38}, CLR_DIM, hFontUI);
     }
 
-    HLine(hdc, 0, LEFT_W, SEARCH_H, CLR_BORDER);
+    HLine(hdc, 0, LEFT_W, off + SEARCH_H, CLR_BORDER);
 
-    int listTop = SEARCH_H;
+    int listTop = off + SEARCH_H;
     int itemHeight = m_compactMode ? 40 : ITEM_H;
-    int visibleItems = (H - SEARCH_H - HINT_H) / itemHeight;
+    int availableHeight = H - listTop - HINT_H;
+    int visibleItems = availableHeight / itemHeight;
 
     int startIdx = 0;
     if (m_selected >= visibleItems)
@@ -423,6 +474,151 @@ void Popup::PaintLeftPanel(HDC hdc) {
     Key(76, H - HINT_H + 9, L"^P",     L"Pin");
     Key(128,H - HINT_H + 9, L"Del",    L"Remove");
     Key(196,H - HINT_H + 9, L"Esc",    L"Close");
+}
+
+void Popup::PaintSnippetTab(HDC hdc) {
+    int listTop = TAB_STRIP_H;
+    int itemHeight = 56;
+
+    if (!m_snippets || m_snippets->empty()) {
+        DrawTextLine(hdc, L"No snippets yet.\nRight-click a clip to save one,\nor add below.",
+            {16, listTop + 20, LEFT_W - 16, listTop + 100},
+            CLR_DIM, hFontSmall, DT_LEFT|DT_TOP|DT_WORDBREAK);
+    } else {
+        for (int i = 0; i < (int)m_snippets->size(); i++) {
+            const Snippet& s = (*m_snippets)[i];
+            int y = listTop + i * itemHeight;
+            if (y > H - HINT_H - itemHeight) break;
+
+            bool sel = (i == m_selected);
+            RECT itemRc = {0, y, LEFT_W, y + itemHeight};
+            FillRect(hdc, &itemRc, sel ? hBrSel : hBrItem);
+
+            SetTextColor(hdc, sel ? CLR_WHITE : TypeColor(ClipType::Text));
+            SelectObject(hdc, hFontSmall);
+            SetBkMode(hdc, TRANSPARENT);
+            TextOutW(hdc, 12, y + 18, L"\U0001F4CC", 2);
+
+            RECT nameRc = {34, y + 8, LEFT_W - 12, y + 28};
+            DrawTextLine(hdc, s.name, nameRc, sel ? CLR_WHITE : CLR_TEXT, hFontUI,
+                DT_LEFT|DT_TOP|DT_SINGLELINE|DT_END_ELLIPSIS);
+
+            std::wstring preview = s.text.substr(0, 60);
+            for (wchar_t& c : preview) if (c == L'\n' || c == L'\r') c = L' ';
+            RECT prevRc = {34, y + 30, LEFT_W - 12, y + itemHeight - 4};
+            DrawTextLine(hdc, preview, prevRc, sel ? C(225,235,255) : CLR_DIM, hFontSmall,
+                DT_LEFT|DT_TOP|DT_SINGLELINE|DT_END_ELLIPSIS);
+
+            if (!sel)
+                HLine(hdc, 8, LEFT_W - 8, y + itemHeight - 1, CLR_SEP);
+        }
+    }
+
+    // Bottom bar: Add / Delete buttons
+    RECT hintRc = {0, H - HINT_H, LEFT_W, H};
+    FillRect(hdc, &hintRc, hBrHint);
+    HLine(hdc, 0, LEFT_W, H - HINT_H, CLR_BORDER);
+
+    DrawTextLine(hdc, L"  Ctrl+N New    Ctrl+Del Remove",
+        {0, H - HINT_H, LEFT_W, H},
+        CLR_DIM, hFontSmall, DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+}
+
+void Popup::SetSnippets(std::vector<Snippet>* snippets) {
+    m_snippets = snippets;
+}
+
+void Popup::ToggleSnippetsView() {
+    m_showingSnippets = !m_showingSnippets;
+    m_selected = 0;
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+void Popup::AddSnippetDialog() {
+    if (!m_snippets) return;
+
+    wchar_t nameBuf[128] = {};
+    wchar_t textBuf[2048] = {};
+
+    // Simple two-prompt flow using GetWindowText-style dialogs would need a real dialog box.
+    // For now use a minimal inline input via two MessageBox-driven steps is poor UX;
+    // instead create a tiny modal dialog.
+
+    // We build a tiny dedicated child window with two edit boxes.
+    struct DlgData { std::wstring name, text; bool ok = false; };
+    static DlgData data;
+    data = DlgData();
+
+    HWND dlg = CreateWindowExW(WS_EX_TOPMOST | WS_EX_DLGMODALFRAME,
+        L"STATIC", L"", WS_POPUP | WS_BORDER | WS_VISIBLE,
+        0, 0, 360, 220, m_hwnd, nullptr, m_hInst, nullptr);
+
+    RECT rc; GetWindowRect(m_hwnd, &rc);
+    SetWindowPos(dlg, HWND_TOPMOST,
+        rc.left + (W - 360)/2, rc.top + (H - 220)/2, 360, 220, 0);
+
+    HWND lbl1 = CreateWindowExW(0, L"STATIC", L"Snippet name:",
+        WS_CHILD|WS_VISIBLE, 16, 16, 200, 20, dlg, nullptr, m_hInst, nullptr);
+    HWND nameEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+        WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL, 16, 40, 328, 24,
+        dlg, nullptr, m_hInst, nullptr);
+
+    HWND lbl2 = CreateWindowExW(0, L"STATIC", L"Snippet text:",
+        WS_CHILD|WS_VISIBLE, 16, 74, 200, 20, dlg, nullptr, m_hInst, nullptr);
+    HWND textEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+        WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL|ES_MULTILINE|WS_VSCROLL,
+        16, 98, 328, 70, dlg, nullptr, m_hInst, nullptr);
+
+    HWND btnOk = CreateWindowExW(0, L"BUTTON", L"Add",
+        WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON, 184, 176, 80, 28,
+        dlg, (HMENU)1, m_hInst, nullptr);
+    HWND btnCancel = CreateWindowExW(0, L"BUTTON", L"Cancel",
+        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 264, 176, 80, 28,
+        dlg, (HMENU)2, m_hInst, nullptr);
+
+    ShowWindow(dlg, SW_SHOW);
+    SetFocus(nameEdit);
+
+    bool done = false;
+    bool confirmed = false;
+    MSG msg;
+    while (!done && GetMessageW(&msg, nullptr, 0, 0)) {
+        if (msg.hwnd == btnOk && msg.message == WM_LBUTTONUP) {}
+        if (msg.message == WM_COMMAND && (HWND)msg.lParam == btnOk) {
+            confirmed = true; done = true;
+        } else if (msg.message == WM_COMMAND && (HWND)msg.lParam == btnCancel) {
+            done = true;
+        } else if (msg.message == WM_DESTROY && msg.hwnd == dlg) {
+            done = true;
+        }
+        if (!IsDialogMessageW(dlg, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+    }
+
+    if (confirmed) {
+        wchar_t nameBuf2[128] = {}, textBuf2[2048] = {};
+        GetWindowTextW(nameEdit, nameBuf2, 128);
+        GetWindowTextW(textEdit, textBuf2, 2048);
+        std::wstring name = nameBuf2;
+        std::wstring text = textBuf2;
+        if (!name.empty() && !text.empty()) {
+            m_snippets->push_back({name, text});
+            if (OnSnippetsChanged) OnSnippetsChanged();
+        }
+    }
+
+    DestroyWindow(dlg);
+    InvalidateRect(m_hwnd, nullptr, FALSE);
+}
+
+void Popup::DeleteSnippetSelected() {
+    if (!m_snippets) return;
+    if (m_selected < 0 || m_selected >= (int)m_snippets->size()) return;
+    m_snippets->erase(m_snippets->begin() + m_selected);
+    if (OnSnippetsChanged) OnSnippetsChanged();
+    InvalidateRect(m_hwnd, nullptr, FALSE);
 }
 
 void Popup::PaintRightPanel(HDC hdc) {
@@ -631,6 +827,16 @@ LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_LBUTTONDOWN: {
         int mx = LOWORD(lParam);
         int my = HIWORD(lParam);
+
+        // Tab strip click
+        if (mx < LEFT_W && my < TAB_STRIP_H) {
+            bool clickedSnippets = (mx >= LEFT_W/2);
+            if (clickedSnippets != self->m_showingSnippets) {
+                self->ToggleSnippetsView();
+            }
+            SetFocus(self->m_search);
+            return 0;
+        }
 
         if (self->m_quickActionRect.right > self->m_quickActionRect.left) {
             RECT& r = self->m_quickActionRect;
