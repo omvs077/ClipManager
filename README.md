@@ -35,7 +35,7 @@ Binary will be at `build\Release\ClipManager.exe`.
 
 | Action | Shortcut |
 |---|---|
-| Open clipboard history | `Win + V` |
+| Open clipboard history | `Ctrl + Shift + V` |
 | Paste selected clip | `Enter` |
 | Pin / unpin clip | `Ctrl + P` |
 | Remove clip | `Ctrl + Del` |

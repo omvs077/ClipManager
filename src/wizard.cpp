@@ -55,7 +55,7 @@ bool Wizard::Create(HINSTANCE hInst) {
         WS_CHILD|WS_VISIBLE, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[0], L"Welcome to ClipManager", 32, 32, 396, 36, m_hFontBig);
     MakeLabel(m_pages[0],
-        L"Press Win+V anytime to see your clipboard history.\n"
+        L"Press Ctrl+Shift+V anytime to see your clipboard history.\n"
         L"Let's set a couple of quick preferences.",
         32, 80, 396, 50, m_hFont);
 
@@ -91,9 +91,9 @@ bool Wizard::Create(HINSTANCE hInst) {
         WS_CHILD, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[2], L"You're all set!", 32, 32, 396, 36, m_hFontBig);
     MakeLabel(m_pages[2],
-        L"Win + V  \u2014  open clipboard history\n"
-        L"Ctrl + P \u2014  pin a clip\n"
-        L"Ctrl + Del \u2014  remove a clip\n\n"
+        L"Ctrl + Shift + V  \u2014  open clipboard history\n"
+        L"Ctrl + P  \u2014  pin a clip\n"
+        L"Ctrl + Del  \u2014  remove a clip\n\n"
         L"ClipManager is now running in your system tray.",
         32, 90, 396, 120, m_hFont);
 

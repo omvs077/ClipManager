@@ -206,12 +206,13 @@ HWND Settings::CreateTabHotkeys(RECT rc) {
 
     MakeLabel(p, L"Open Clipboard History:", 32, 50, 220, 20);
     m_hkMain = MakeHotkeyBox(p, ID_HK_MAIN, 270, 47, 160, 24);
+    SendMessageW(m_hkMain, HKM_SETHOTKEY, MAKEWORD('V', HOTKEYF_CONTROL | HOTKEYF_SHIFT), 0);
 
     MakeLabel(p, L"Paste Latest Clip:", 32, 84, 220, 20);
     m_hkLatest = MakeHotkeyBox(p, ID_HK_LATEST, 270, 81, 160, 24);
 
     MakeLabel(p,
-        L"Note: Win+V is reserved for the main hotkey\n"
+        L"Note: Ctrl+Shift+V is reserved for the main hotkey\n"
         L"and cannot be changed in this version.",
         32, 130, 400, 40);
 
