@@ -41,24 +41,46 @@ Binary will be at `build\Release\ClipManager.exe`.
 | Paste selected clip | `Enter` |
 | Pin / unpin clip | `Ctrl + P` |
 | Remove clip | `Ctrl + Del` |
+| Add New Snippet | `Ctrl + N` |
 | Close popup | `Esc` |
 
 Right-click the tray icon for Settings, manual history view, or to exit.
 
-## Architecture
+## 🏗️ Architectural Overview
 
-```
-src/
-├── main.cpp        — WinMain, message loop, clipboard orchestration
-├── clipboard.cpp    — AddClipboardFormatListener wrapper, text/file-drop read/write
-├── popup.cpp        — Two-panel search UI (list + preview), owner-drawn, snippets tab
-├── tray.cpp         — Shell_NotifyIcon wrapper, context menu
-├── settings.cpp     — Tabbed settings dialog
-├── storage.cpp      — Plain-text history persistence
-├── detector.cpp     — Regex-based content type detection
-├── imaging.cpp      — GDI+ image capture/thumbnail/cleanup
-├── snippets.cpp     — Reusable text snippet storage
-└── wizard.cpp       — First-run setup wizard
+Unlike older clipboard utilities that rely on fragile hooks or the outdated `SetClipboardViewer` chain, ClipManager is built from the ground up to be safe, event-driven, and highly performant.
+
+### Core Architecture Components
+
+* **Application Core (`src/core/`)**: Manages the application lifecycle, initializes the main hidden utility window, handles single-instance synchronization via a system Mutex, and runs the central Win32 Message Loop. It leverages `GWLP_USERDATA` to route global window messages safely into C++ object instances without relying on global state variables.
+* **Clipboard Monitor (`src/components/clipboard.cpp`)**: Uses the modern `AddClipboardFormatListener` API (introduced in Windows Vista) to register for `WM_CLIPBOARDUPDATE` messages. This ensures the application never breaks the system clipboard chain if a crash or hang occurs.
+* **UI System (`src/ui/`)**: Handles the tray icon notifications via `Shell_NotifyIcon` and manages the custom-drawn popup window and tabbed configurations. The popup handles complex `WM_ACTIVATE` and `SetForegroundWindow` logic to ensure it appears instantly at the mouse cursor, dismisses seamlessly when clicking away, and never steals focus from your target application.
+* **Async Storage & GDI+ Imaging (`src/components/storage.cpp`, `src/components/imaging.cpp`)**: Offloads disk I/O operations and image conversions to a dedicated background pipeline. Storing clipboard history or image caching never introduces micro-stutters to your active application's UI flow.
+
+### Project File Structure
+
+```text
+ClipManager/
+├── CMakeLists.txt              # Core build configuration
+├── README.md                   # Project documentation
+├── .gitignore                  # Build and IDE exclusions
+├── installer/
+│   └── installer.nsi           # NSIS deployment installer script
+├── resources/
+│   ├── icon.ico                # Application tray & window icon
+│   └── resource.rc             # Windows resource file (version info + icon)
+└── src/
+    ├── common.h                # Shared definitions, macros, structural contracts
+    ├── main.cpp                # App entry point & message dispatching
+    ├── clipboard.h / .cpp      # Advanced clipboard monitoring & format extraction
+    ├── tray.h / .cpp           # Shell_NotifyIcon & tray context menu implementation
+    ├── popup.h / .cpp          # Owner-drawn 2-panel interface, rendering loops & WndProc
+    ├── settings.h / .cpp       # 5-tab configuration panel layout & state tracking
+    ├── storage.h / .cpp        # Backward-compatible pipe-delimited database engine
+    ├── detector.h / .cpp       # Regex smart-content classification engine
+    ├── imaging.h / .cpp        # GDI+ snapshot capture, thumbnail generation & orphan cleanup
+    ├── snippets.h / .cpp       # Dynamic snippet repository and string expansion mapping
+    └── wizard.h / .cpp         # First-run PerMonitorV2 DPI-aware setup wizard
 ```
 
 Uses `AddClipboardFormatListener` (Vista+) rather than the legacy `SetClipboardViewer` chain, avoiding the classic "one app crashes, clipboard breaks for everyone" bug.
