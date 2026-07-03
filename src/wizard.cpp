@@ -96,6 +96,9 @@ bool Wizard::Create(HINSTANCE hInst) {
         L"Ctrl + Del  \u2014  remove a clip\n\n"
         L"ClipManager is now running in your system tray.",
         32, 90, 396, 120, m_hFont);
+    MakeLabel(m_pages[2],
+        L"Crafted by Dvvyom | GitHub: github.com/omvs077",
+        32, 220, 396, 20, m_hFont);
 
     // ── Buttons ─────────────────────────────────────────────────
     m_btnSkip = CreateWindowExW(0, L"BUTTON", L"Skip",

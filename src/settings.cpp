@@ -1,5 +1,6 @@
 #include "settings.h"
 #include <shlobj.h>
+#include <shellapi.h>
 #include <uxtheme.h>
 #pragma comment(lib, "uxtheme.lib")
 
@@ -27,34 +28,36 @@ constexpr wchar_t Settings::PANEL_CLASS[];
 #define ID_HK_LATEST     117
 #define ID_BTN_SAVE      118
 #define ID_BTN_CANCEL    119
+#define ID_LNK_GITHUB    120
+#define ID_LNK_EMAIL     121
 
-// ── Palette ──────────────────────────────────────────────────────
+// â”€â”€ Palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 static const COLORREF
-    C_BG      = RGB(248,250,252),
-    C_PANEL   = RGB(252,253,255),
-    C_TEXT    = RGB(26, 37, 64),
-    C_DIM     = RGB(110,125,150),
-    C_BORDER  = RGB(220,228,240),
-    C_ACCENT  = RGB(61, 127,232),
-    C_BTN     = RGB(236,242,250);
+C_BG = RGB(248, 250, 252),
+C_PANEL = RGB(252, 253, 255),
+C_TEXT = RGB(26, 37, 64),
+C_DIM = RGB(110, 125, 150),
+C_BORDER = RGB(220, 228, 240),
+C_ACCENT = RGB(61, 127, 232),
+C_BTN = RGB(236, 242, 250);
 
-static HBRUSH hBrBg    = nullptr;
+static HBRUSH hBrBg = nullptr;
 static HBRUSH hBrPanel = nullptr;
-static HBRUSH hBrBtn   = nullptr;
+static HBRUSH hBrBtn = nullptr;
 
 static void InitBrushes() {
     if (!hBrBg) {
-        hBrBg    = CreateSolidBrush(C_BG);
+        hBrBg = CreateSolidBrush(C_BG);
         hBrPanel = CreateSolidBrush(C_PANEL);
-        hBrBtn   = CreateSolidBrush(C_BTN);
+        hBrBtn = CreateSolidBrush(C_BTN);
     }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 HWND Settings::MakeLabel(HWND parent, const wchar_t* text,
     int x, int y, int w, int h) {
     HWND hw = CreateWindowExW(0, L"STATIC", text,
-        WS_CHILD|WS_VISIBLE|SS_LEFT,
+        WS_CHILD | WS_VISIBLE | SS_LEFT,
         x, y, w, h, parent, nullptr, m_hInst, nullptr);
     SendMessageW(hw, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     return hw;
@@ -63,7 +66,7 @@ HWND Settings::MakeLabel(HWND parent, const wchar_t* text,
 static HWND MakeSectionHeader(HWND parent, HINSTANCE hInst, HFONT font,
     const wchar_t* text, int x, int y, int w) {
     HWND hw = CreateWindowExW(0, L"STATIC", text,
-        WS_CHILD|WS_VISIBLE|SS_LEFT,
+        WS_CHILD | WS_VISIBLE | SS_LEFT,
         x, y, w, 18, parent, nullptr, hInst, nullptr);
     SendMessageW(hw, WM_SETFONT, (WPARAM)font, TRUE);
     return hw;
@@ -72,7 +75,7 @@ static HWND MakeSectionHeader(HWND parent, HINSTANCE hInst, HFONT font,
 HWND Settings::MakeCheck(HWND parent, const wchar_t* text, int id,
     int x, int y, int w, int h) {
     HWND hw = CreateWindowExW(0, L"BUTTON", text,
-        WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,
+        WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
         x, y, w, h, parent, (HMENU)(UINT_PTR)id, m_hInst, nullptr);
     SendMessageW(hw, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     return hw;
@@ -81,7 +84,7 @@ HWND Settings::MakeCheck(HWND parent, const wchar_t* text, int id,
 HWND Settings::MakeCombo(HWND parent, int id,
     int x, int y, int w, int h) {
     HWND hw = CreateWindowExW(0, L"COMBOBOX", L"",
-        WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
+        WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
         x, y, w, h, parent, (HMENU)(UINT_PTR)id, m_hInst, nullptr);
     SendMessageW(hw, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     return hw;
@@ -90,7 +93,7 @@ HWND Settings::MakeCombo(HWND parent, int id,
 HWND Settings::MakeButton(HWND parent, const wchar_t* text, int id,
     int x, int y, int w, int h) {
     HWND hw = CreateWindowExW(0, L"BUTTON", text,
-        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
         x, y, w, h, parent, (HMENU)(UINT_PTR)id, m_hInst, nullptr);
     SendMessageW(hw, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     return hw;
@@ -99,20 +102,31 @@ HWND Settings::MakeButton(HWND parent, const wchar_t* text, int id,
 HWND Settings::MakeHotkeyBox(HWND parent, int id,
     int x, int y, int w, int h) {
     HWND hw = CreateWindowExW(WS_EX_CLIENTEDGE, HOTKEY_CLASS, L"",
-        WS_CHILD|WS_VISIBLE,
+        WS_CHILD | WS_VISIBLE,
         x, y, w, h, parent, (HMENU)(UINT_PTR)id, m_hInst, nullptr);
     SendMessageW(hw, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     return hw;
 }
 
-// ── Panel WndProc (dark background for tab panels) ───────────────
+HWND Settings::MakeLink(HWND parent, const wchar_t* text, int id,
+    int x, int y, int w, int h) {
+    HWND hw = CreateWindowExW(0, L"STATIC", text,
+        WS_CHILD | WS_VISIBLE | SS_NOTIFY | SS_LEFT,
+        x, y, w, h, parent, (HMENU)(UINT_PTR)id, m_hInst, nullptr);
+    SendMessageW(hw, WM_SETFONT, (WPARAM)m_hFont, TRUE);
+    return hw;
+}
+
+// â”€â”€ Panel WndProc (dark background for tab panels) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 LRESULT CALLBACK Settings::PanelProc(HWND hwnd, UINT msg,
     WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLORBTN: {
         HDC hdc = (HDC)wParam;
-        SetTextColor(hdc, C_TEXT);
+        HWND ctrl = (HWND)lParam;
+        int id = GetDlgCtrlID(ctrl);
+        SetTextColor(hdc, (id == ID_LNK_GITHUB || id == ID_LNK_EMAIL) ? C_ACCENT : C_TEXT);
         SetBkColor(hdc, C_PANEL);
         return (LRESULT)hBrPanel;
     }
@@ -136,11 +150,11 @@ LRESULT CALLBACK Settings::PanelProc(HWND hwnd, UINT msg,
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-// ── Tab panels (using the pixel blueprint grid) ───────────────────
+// â”€â”€ Tab panels (using the pixel blueprint grid) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 HWND Settings::CreateTabGeneral(RECT rc) {
     HWND p = CreateWindowExW(0, PANEL_CLASS, L"",
         WS_CHILD, rc.left, rc.top,
-        rc.right-rc.left, rc.bottom-rc.top,
+        rc.right - rc.left, rc.bottom - rc.top,
         m_hwnd, nullptr, m_hInst, nullptr);
 
     MakeSectionHeader(p, m_hInst, m_hFontBold, L"Startup", 24, 16, 400);
@@ -159,7 +173,7 @@ HWND Settings::CreateTabGeneral(RECT rc) {
 HWND Settings::CreateTabHistory(RECT rc) {
     HWND p = CreateWindowExW(0, PANEL_CLASS, L"",
         WS_CHILD, rc.left, rc.top,
-        rc.right-rc.left, rc.bottom-rc.top,
+        rc.right - rc.left, rc.bottom - rc.top,
         m_hwnd, nullptr, m_hInst, nullptr);
 
     MakeSectionHeader(p, m_hInst, m_hFontBold, L"Storage Limits", 24, 16, 400);
@@ -182,12 +196,12 @@ HWND Settings::CreateTabHistory(RECT rc) {
 
     MakeSectionHeader(p, m_hInst, m_hFontBold, L"Content Filters", 24, 130, 400);
 
-    m_chkDupes  = MakeCheck(p, L"Ignore duplicate entries",
-        ID_CHK_DUPES,  32, 156, 400, 24);
+    m_chkDupes = MakeCheck(p, L"Ignore duplicate entries",
+        ID_CHK_DUPES, 32, 156, 400, 24);
     m_chkImages = MakeCheck(p, L"Capture copied images",
         ID_CHK_IMAGES, 32, 186, 400, 24);
-    m_chkFiles  = MakeCheck(p, L"Capture copied files and folders",
-        ID_CHK_FILES,  32, 216, 400, 24);
+    m_chkFiles = MakeCheck(p, L"Capture copied files and folders",
+        ID_CHK_FILES, 32, 216, 400, 24);
 
     MakeSectionHeader(p, m_hInst, m_hFontBold, L"Maintenance", 24, 260, 400);
     m_btnClear = MakeButton(p, L"Clear All History",
@@ -199,7 +213,7 @@ HWND Settings::CreateTabHistory(RECT rc) {
 HWND Settings::CreateTabHotkeys(RECT rc) {
     HWND p = CreateWindowExW(0, PANEL_CLASS, L"",
         WS_CHILD, rc.left, rc.top,
-        rc.right-rc.left, rc.bottom-rc.top,
+        rc.right - rc.left, rc.bottom - rc.top,
         m_hwnd, nullptr, m_hInst, nullptr);
 
     MakeSectionHeader(p, m_hInst, m_hFontBold, L"Global Hotkeys", 24, 16, 400);
@@ -222,12 +236,12 @@ HWND Settings::CreateTabHotkeys(RECT rc) {
 HWND Settings::CreateTabAppearance(RECT rc) {
     HWND p = CreateWindowExW(0, PANEL_CLASS, L"",
         WS_CHILD, rc.left, rc.top,
-        rc.right-rc.left, rc.bottom-rc.top,
+        rc.right - rc.left, rc.bottom - rc.top,
         m_hwnd, nullptr, m_hInst, nullptr);
 
     MakeSectionHeader(p, m_hInst, m_hFontBold, L"Display", 24, 16, 400);
-    m_chkCompact    = MakeCheck(p, L"Compact mode (smaller items)",
-        ID_CHK_COMPACT,    32, 42, 400, 24);
+    m_chkCompact = MakeCheck(p, L"Compact mode (smaller items)",
+        ID_CHK_COMPACT, 32, 42, 400, 24);
     m_chkTimestamps = MakeCheck(p, L"Show timestamps on clips",
         ID_CHK_TIMESTAMPS, 32, 72, 400, 24);
 
@@ -237,12 +251,12 @@ HWND Settings::CreateTabAppearance(RECT rc) {
 HWND Settings::CreateTabPrivacy(RECT rc) {
     HWND p = CreateWindowExW(0, PANEL_CLASS, L"",
         WS_CHILD, rc.left, rc.top,
-        rc.right-rc.left, rc.bottom-rc.top,
+        rc.right - rc.left, rc.bottom - rc.top,
         m_hwnd, nullptr, m_hInst, nullptr);
 
     MakeSectionHeader(p, m_hInst, m_hFontBold, L"Monitoring", 24, 16, 400);
-    m_chkPause   = MakeCheck(p, L"Pause clipboard monitoring",
-        ID_CHK_PAUSE,   32, 42, 400, 24);
+    m_chkPause = MakeCheck(p, L"Pause clipboard monitoring",
+        ID_CHK_PAUSE, 32, 42, 400, 24);
     m_chkExclPwd = MakeCheck(p, L"Exclude copies from password managers",
         ID_CHK_EXCLPWD, 32, 72, 400, 24);
 
@@ -253,53 +267,68 @@ HWND Settings::CreateTabPrivacy(RECT rc) {
     return p;
 }
 
-// ── Create ───────────────────────────────────────────────────────
+HWND Settings::CreateTabAbout(RECT rc) {
+    HWND p = CreateWindowExW(0, PANEL_CLASS, L"",
+        WS_CHILD, rc.left, rc.top,
+        rc.right - rc.left, rc.bottom - rc.top,
+        m_hwnd, nullptr, m_hInst, nullptr);
+
+    MakeSectionHeader(p, m_hInst, m_hFontBold, L"ClipManager", 24, 16, 400);
+    MakeLabel(p, APP_VERSION, 32, 42, 400, 20);
+
+    MakeSectionHeader(p, m_hInst, m_hFontBold, L"Credits", 24, 96, 400);
+    MakeLabel(p, L"Crafted by Dvvyom", 32, 124, 400, 20);
+    MakeLink(p, L"GitHub: github.com/omvs077", ID_LNK_GITHUB, 32, 156, 400, 20);
+    MakeLink(p, L"GChat & Email: omvs077@gmail.com", ID_LNK_EMAIL, 32, 188, 400, 20);
+
+    return p;
+}
+
+// â”€â”€ Create â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 bool Settings::Create(HINSTANCE hInst) {
     m_hInst = hInst;
     InitBrushes();
 
     WNDCLASSEXW pc = {};
-    pc.cbSize        = sizeof(pc);
-    pc.lpfnWndProc   = PanelProc;
-    pc.hInstance     = hInst;
+    pc.cbSize = sizeof(pc);
+    pc.lpfnWndProc = PanelProc;
+    pc.hInstance = hInst;
     pc.hbrBackground = hBrPanel;
     pc.lpszClassName = PANEL_CLASS;
     RegisterClassExW(&pc);
 
-    m_hFont = CreateFontW(15,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
-        DEFAULT_PITCH|FF_DONTCARE, L"Segoe UI");
-    m_hFontBold = CreateFontW(16,0,0,0,FW_SEMIBOLD,0,0,0,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
-        DEFAULT_PITCH|FF_DONTCARE, L"Segoe UI");
-    m_hFontSm = CreateFontW(13,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
-        OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,
-        DEFAULT_PITCH|FF_DONTCARE, L"Segoe UI");
+    m_hFont = CreateFontW(15, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+        DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+    m_hFontBold = CreateFontW(16, 0, 0, 0, FW_SEMIBOLD, 0, 0, 0, DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+        DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+    m_hFontSm = CreateFontW(13, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+        DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
     WNDCLASSEXW wc = {};
-    wc.cbSize        = sizeof(wc);
-    wc.lpfnWndProc   = WndProc;
-    wc.hInstance     = hInst;
-    wc.hCursor       = LoadCursorW(nullptr, IDC_ARROW);
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInst;
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wc.hbrBackground = hBrBg;
     wc.lpszClassName = CLASS_NAME;
     RegisterClassExW(&wc);
 
-    // ── Main window: 520 x 480 per blueprint ──────────────────────
     m_hwnd = CreateWindowExW(
         WS_EX_DLGMODALFRAME,
         CLASS_NAME, L"ClipManager Settings",
-        WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU,
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
         0, 0, 520, 480,
         nullptr, nullptr, hInst, this);
     if (!m_hwnd) return false;
 
-    INITCOMMONCONTROLSEX icc = {sizeof(icc), ICC_TAB_CLASSES|ICC_HOTKEY_CLASS};
+    INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_TAB_CLASSES | ICC_HOTKEY_CLASS };
     InitCommonControlsEx(&icc);
 
-    // ── Tab control: 496 x 390 at (12,12) ──────────────────────────
     m_tabs = CreateWindowExW(0, WC_TABCONTROLW, L"",
-        WS_CHILD|WS_VISIBLE|TCS_FLATBUTTONS,
+        WS_CHILD | WS_VISIBLE | TCS_FLATBUTTONS,
         12, 12, 496, 390,
         m_hwnd, (HMENU)ID_TAB, hInst, nullptr);
     SendMessageW(m_tabs, WM_SETFONT, (WPARAM)m_hFont, TRUE);
@@ -309,24 +338,24 @@ bool Settings::Create(HINSTANCE hInst) {
         TCITEMW ti = {}; ti.mask = TCIF_TEXT;
         ti.pszText = const_cast<wchar_t*>(text);
         SendMessageW(m_tabs, TCM_INSERTITEM, idx++, (LPARAM)&ti);
-    };
+        };
     AddTab(L"General");
     AddTab(L"History");
     AddTab(L"Hotkeys");
     AddTab(L"Appearance");
     AddTab(L"Privacy");
+    AddTab(L"About");
 
-    // Per checklist: panel sits
-    RECT tabRc = {16, 44, 16+488, 44+320};
+    RECT tabRc = { 16, 44, 16 + 488, 44 + 320 };
 
     m_panels[0] = CreateTabGeneral(tabRc);
     m_panels[1] = CreateTabHistory(tabRc);
     m_panels[2] = CreateTabHotkeys(tabRc);
     m_panels[3] = CreateTabAppearance(tabRc);
     m_panels[4] = CreateTabPrivacy(tabRc);
+    m_panels[5] = CreateTabAbout(tabRc);
 
-    // ── Action buttons: direct children of main window, in the runway ──
-    MakeButton(m_hwnd, L"Save",   ID_BTN_SAVE,   286, 380, 90, 32);
+    MakeButton(m_hwnd, L"Save", ID_BTN_SAVE, 286, 380, 90, 32);
     MakeButton(m_hwnd, L"Cancel", ID_BTN_CANCEL, 388, 380, 90, 32);
 
     ShowTab(0);
@@ -336,15 +365,15 @@ bool Settings::Create(HINSTANCE hInst) {
     int sw = GetSystemMetrics(SM_CXSCREEN);
     int sh = GetSystemMetrics(SM_CYSCREEN);
     SetWindowPos(m_hwnd, nullptr,
-        (sw-(rc.right-rc.left))/2,
-        (sh-(rc.bottom-rc.top))/2,
-        0, 0, SWP_NOSIZE|SWP_NOZORDER);
+        (sw - (rc.right - rc.left)) / 2,
+        (sh - (rc.bottom - rc.top)) / 2,
+        0, 0, SWP_NOSIZE | SWP_NOZORDER);
 
     return true;
 }
 
 void Settings::ShowTab(int index) {
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < TAB_COUNT; i++)
         ShowWindow(m_panels[i], i == index ? SW_SHOW : SW_HIDE);
     m_activeTab = index;
 }
@@ -358,24 +387,24 @@ void Settings::PopulateControls() {
         Current.showNotifications ? BST_CHECKED : BST_UNCHECKED, 0);
 
     int limitIdx = 1;
-    if      (Current.historyLimit == 100)  limitIdx = 0;
+    if (Current.historyLimit == 100)  limitIdx = 0;
     else if (Current.historyLimit == 500)  limitIdx = 1;
     else if (Current.historyLimit == 1000) limitIdx = 2;
     else if (Current.historyLimit == -1)   limitIdx = 3;
     SendMessageW(m_cmbLimit, CB_SETCURSEL, limitIdx, 0);
 
     int delIdx = 2;
-    if      (Current.autoDeleteDays == -1) delIdx = 0;
+    if (Current.autoDeleteDays == -1) delIdx = 0;
     else if (Current.autoDeleteDays == 7)  delIdx = 1;
     else if (Current.autoDeleteDays == 30) delIdx = 2;
     else if (Current.autoDeleteDays == 90) delIdx = 3;
     SendMessageW(m_cmbAutoDel, CB_SETCURSEL, delIdx, 0);
 
-    SendMessageW(m_chkDupes,  BM_SETCHECK,
+    SendMessageW(m_chkDupes, BM_SETCHECK,
         Current.ignoreDuplicates ? BST_CHECKED : BST_UNCHECKED, 0);
     SendMessageW(m_chkImages, BM_SETCHECK,
         Current.saveImages ? BST_CHECKED : BST_UNCHECKED, 0);
-    SendMessageW(m_chkFiles,  BM_SETCHECK,
+    SendMessageW(m_chkFiles, BM_SETCHECK,
         Current.saveFiles ? BST_CHECKED : BST_UNCHECKED, 0);
 
     SendMessageW(m_chkCompact, BM_SETCHECK,
@@ -383,46 +412,46 @@ void Settings::PopulateControls() {
     SendMessageW(m_chkTimestamps, BM_SETCHECK,
         Current.showTimestamps ? BST_CHECKED : BST_UNCHECKED, 0);
 
-    SendMessageW(m_chkPause,     BM_SETCHECK,
+    SendMessageW(m_chkPause, BM_SETCHECK,
         Current.pauseMonitoring ? BST_CHECKED : BST_UNCHECKED, 0);
-    SendMessageW(m_chkExclPwd,   BM_SETCHECK,
+    SendMessageW(m_chkExclPwd, BM_SETCHECK,
         Current.excludePasswords ? BST_CHECKED : BST_UNCHECKED, 0);
     SendMessageW(m_chkClearExit, BM_SETCHECK,
         Current.clearOnExit ? BST_CHECKED : BST_UNCHECKED, 0);
 }
 
 void Settings::SaveAndClose() {
-    Current.startWithWindows  =
+    Current.startWithWindows =
         SendMessageW(m_chkStartup, BM_GETCHECK, 0, 0) == BST_CHECKED;
-    Current.minimizeToTray    =
+    Current.minimizeToTray =
         SendMessageW(m_chkMinTray, BM_GETCHECK, 0, 0) == BST_CHECKED;
     Current.showNotifications =
-        SendMessageW(m_chkNotify,  BM_GETCHECK, 0, 0) == BST_CHECKED;
+        SendMessageW(m_chkNotify, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
     int limitSel = (int)SendMessageW(m_cmbLimit, CB_GETCURSEL, 0, 0);
-    int limits[] = {100, 500, 1000, -1};
+    int limits[] = { 100, 500, 1000, -1 };
     Current.historyLimit = limits[limitSel < 4 ? limitSel : 1];
 
     int delSel = (int)SendMessageW(m_cmbAutoDel, CB_GETCURSEL, 0, 0);
-    int days[] = {-1, 7, 30, 90};
+    int days[] = { -1, 7, 30, 90 };
     Current.autoDeleteDays = days[delSel < 4 ? delSel : 2];
 
     Current.ignoreDuplicates =
-        SendMessageW(m_chkDupes,  BM_GETCHECK, 0, 0) == BST_CHECKED;
+        SendMessageW(m_chkDupes, BM_GETCHECK, 0, 0) == BST_CHECKED;
     Current.saveImages =
         SendMessageW(m_chkImages, BM_GETCHECK, 0, 0) == BST_CHECKED;
     Current.saveFiles =
-        SendMessageW(m_chkFiles,  BM_GETCHECK, 0, 0) == BST_CHECKED;
+        SendMessageW(m_chkFiles, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
     Current.compactMode =
-        SendMessageW(m_chkCompact,    BM_GETCHECK, 0, 0) == BST_CHECKED;
+        SendMessageW(m_chkCompact, BM_GETCHECK, 0, 0) == BST_CHECKED;
     Current.showTimestamps =
         SendMessageW(m_chkTimestamps, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
     Current.pauseMonitoring =
-        SendMessageW(m_chkPause,     BM_GETCHECK, 0, 0) == BST_CHECKED;
+        SendMessageW(m_chkPause, BM_GETCHECK, 0, 0) == BST_CHECKED;
     Current.excludePasswords =
-        SendMessageW(m_chkExclPwd,   BM_GETCHECK, 0, 0) == BST_CHECKED;
+        SendMessageW(m_chkExclPwd, BM_GETCHECK, 0, 0) == BST_CHECKED;
     Current.clearOnExit =
         SendMessageW(m_chkClearExit, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
@@ -442,8 +471,9 @@ void Settings::ApplyStartup(bool enable) {
         std::wstring val = L"\"" + std::wstring(exePath) + L"\"";
         RegSetValueExW(hKey, L"ClipManager", 0, REG_SZ,
             (const BYTE*)val.c_str(),
-            (DWORD)((val.size()+1)*sizeof(wchar_t)));
-    } else {
+            (DWORD)((val.size() + 1) * sizeof(wchar_t)));
+    }
+    else {
         RegDeleteValueW(hKey, L"ClipManager");
     }
     RegCloseKey(hKey);
@@ -469,7 +499,8 @@ LRESULT CALLBACK Settings::WndProc(HWND hwnd, UINT msg,
         self = reinterpret_cast<Settings*>(cs->lpCreateParams);
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
         self->m_hwnd = hwnd;
-    } else {
+    }
+    else {
         self = reinterpret_cast<Settings*>(
             GetWindowLongPtrW(hwnd, GWLP_USERDATA));
     }
@@ -497,7 +528,7 @@ LRESULT CALLBACK Settings::WndProc(HWND hwnd, UINT msg,
         case ID_BTN_CLEAR:
             if (MessageBoxW(hwnd,
                 L"Clear all clipboard history? This cannot be undone.",
-                L"ClipManager", MB_YESNO|MB_ICONQUESTION) == IDYES) {
+                L"ClipManager", MB_YESNO | MB_ICONQUESTION) == IDYES) {
                 if (self->OnClearHistory) self->OnClearHistory();
             }
             return 0;
@@ -508,6 +539,14 @@ LRESULT CALLBACK Settings::WndProc(HWND hwnd, UINT msg,
                     == BST_CHECKED;
                 self->OnPauseToggle(paused);
             }
+            return 0;
+        case ID_LNK_GITHUB:
+            if (HIWORD(wParam) == STN_CLICKED)
+                ShellExecuteW(nullptr, L"open", L"https://github.com/omvs077", nullptr, nullptr, SW_SHOWNORMAL);
+            return 0;
+        case ID_LNK_EMAIL:
+            if (HIWORD(wParam) == STN_CLICKED)
+                ShellExecuteW(nullptr, L"open", L"mailto:omvs077@gmail.com", nullptr, nullptr, SW_SHOWNORMAL);
             return 0;
         }
         return 0;

@@ -28,10 +28,10 @@ RequestExecutionLevel admin
 !insertmacro MUI_LANGUAGE "English"
 
 ; Version info
-VIProductVersion "1.0.0.0"
-VIAddVersionKey "FileVersion"     "1.0.0"
+VIProductVersion "1.1.0.0"
+VIAddVersionKey "FileVersion"     "1.1.0"
 VIAddVersionKey "ProductName"     "ClipManager"
-VIAddVersionKey "ProductVersion"  "1.0.0"
+VIAddVersionKey "ProductVersion"  "1.1.0"
 VIAddVersionKey "FileDescription" "ClipManager Installer"
 VIAddVersionKey "LegalCopyright"  "2024-2026"
 
@@ -84,7 +84,7 @@ Section "Install"
         "Publisher" "ClipManager"
     WriteRegStr HKLM \
         "Software\Microsoft\Windows\CurrentVersion\Uninstall\ClipManager" \
-        "DisplayVersion" "1.0.0"
+        "DisplayVersion" "1.1.0"
     WriteRegDWORD HKLM \
         "Software\Microsoft\Windows\CurrentVersion\Uninstall\ClipManager" \
         "NoModify" 1

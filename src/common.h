@@ -1,9 +1,17 @@
 #pragma once
 
-#define WINVER        0x0601
-#define _WIN32_WINNT  0x0601
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
+#ifndef WINVER
+#define WINVER        0x0601
+#endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT  0x0601
+#endif
 
 #include <windows.h>
 #include <commctrl.h>
@@ -54,8 +62,8 @@ enum class ClipType {
 
 struct ClipEntry {
     std::wstring text;
-    ClipType     type      = ClipType::Text;
-    bool         pinned    = false;
+    ClipType     type = ClipType::Text;
+    bool         pinned = false;
     time_t       timestamp = 0;
     std::wstring imagePath;
     std::vector<std::wstring> filePaths;
