@@ -52,10 +52,10 @@ Unlike older clipboard utilities that rely on fragile hooks or the outdated `Set
 
 ### Core Architecture Components
 
-* **Application Core (`src/core/`)**: Manages the application lifecycle, initializes the main hidden utility window, handles single-instance synchronization via a system Mutex, and runs the central Win32 Message Loop. It leverages `GWLP_USERDATA` to route global window messages safely into C++ object instances without relying on global state variables.
-* **Clipboard Monitor (`src/components/clipboard.cpp`)**: Uses the modern `AddClipboardFormatListener` API (introduced in Windows Vista) to register for `WM_CLIPBOARDUPDATE` messages. This ensures the application never breaks the system clipboard chain if a crash or hang occurs.
-* **UI System (`src/ui/`)**: Handles the tray icon notifications via `Shell_NotifyIcon` and manages the custom-drawn popup window and tabbed configurations. The popup handles complex `WM_ACTIVATE` and `SetForegroundWindow` logic to ensure it appears instantly at the mouse cursor, dismisses seamlessly when clicking away, and never steals focus from your target application.
-* **Async Storage & GDI+ Imaging (`src/components/storage.cpp`, `src/components/imaging.cpp`)**: Offloads disk I/O operations and image conversions to a dedicated background pipeline. Storing clipboard history or image caching never introduces micro-stutters to your active application's UI flow.
+* **Application Core (`src/core/`)**: Handles the app lifecycle, single-instance execution via a system Mutex, and a global-state-free Win32 message loop utilizing GWLP_USERDATA routing.
+* **Clipboard Monitor (`src/components/clipboard.cpp`)**: Implements the modern AddClipboardFormatListener API for crash-resilient, system-friendly tracking of WM_CLIPBOARDUPDATE messages.
+* **UI System (`src/ui/`)**: Manages double-buffered window painting, custom tray notification icons, and advanced cursor-tracked popups optimized via WM_ACTIVATE to prevent focus-stealing.
+* **Async Storage & GDI+ Imaging (`src/components/storage.cpp`, `src/components/imaging.cpp`)**: Offloads intensive disk write operations and GDI+ screenshot/thumbnail parsing to a background worker thread to prevent interface micro-stutters.
 
 ### Project File Structure
 
