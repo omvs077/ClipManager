@@ -362,6 +362,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
         if (index >= 0 && index < (int)g_history.size()) {
             if (g_history[index].type == ClipType::Image)
                 Imaging::DeleteImage(g_history[index].imagePath);
+            g_history.erase(g_history.begin() + index);
         }
         Storage::SaveHistory(g_history);
     };
