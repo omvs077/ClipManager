@@ -1,4 +1,4 @@
-#include "tray.h"
+﻿#include "tray.h"
 #include "common.h"
 
 // Context menu item IDs
@@ -43,7 +43,10 @@ void Tray::ShowContextMenu(HWND hwnd) {
         pt.x, pt.y, 0, hwnd, nullptr);
     DestroyMenu(hMenu);
 
+    // DestroyWindow (not PostQuitMessage) so WM_DESTROY actually runs:
+    // saves history, unregisters hotkeys, stops the clipboard listener,
+    // and removes the tray icon. PostQuitMessage alone skipped all of that.
     if      (cmd == 1001) SendMessageW(hwnd, WM_SHOW_POPUP, 0, 0);
-    else if (cmd == 1002) PostQuitMessage(0);
+    else if (cmd == 1002) DestroyWindow(hwnd);
     else if (cmd == 1003) SendMessageW(hwnd, WM_SHOW_SETTINGS, 0, 0);
 }

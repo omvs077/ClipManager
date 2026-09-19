@@ -1,8 +1,13 @@
-cmake_minimum_required(VERSION 3.20)
-project(ClipManager VERSION 1.1.0 LANGUAGES CXX)
+﻿cmake_minimum_required(VERSION 3.20)
+project(ClipManager VERSION 1.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Statically link the MSVC runtime so the app has zero dependency on
+# vcredist being present on the target machine (certification VMs are
+# clean machines and will otherwise fail with a missing VCRUNTIME140.dll).
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(SOURCES
     src/main.cpp
@@ -37,4 +42,9 @@ target_compile_definitions(ClipManager PRIVATE
 if(MSVC)
     target_compile_options(ClipManager PRIVATE /W4)
     target_link_options(ClipManager PRIVATE /SUBSYSTEM:WINDOWS)
+    # Merges PerMonitorV2 DPI-awareness into the linker's auto-generated
+    # manifest -- no manual manifest embedding, no /MANIFEST:NO needed,
+    # so there's no collision risk with the default automatic manifest.
+    set_target_properties(ClipManager PROPERTIES VS_DPI_AWARE "PerMonitor")
 endif()
+

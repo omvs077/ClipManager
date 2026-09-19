@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "common.h"
 
 class Imaging {
@@ -9,4 +9,5 @@ public:
     static std::wstring GetImageDir();
     static void DeleteImage(const std::wstring& path);
     static void SweepOrphans(const std::vector<ClipEntry>& history);
+    static void Shutdown();
 };

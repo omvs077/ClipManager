@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -41,14 +41,19 @@
 #endif
 
 #define APP_NAME      L"ClipManager"
-#define APP_VERSION   L"1.0.0"
+#define APP_VERSION   L"1.1.1"
 #define WM_TRAY       (WM_APP + 1)
 #define WM_SHOW_POPUP (WM_APP + 2)
 #define WM_SHOW_SETTINGS (WM_APP + 3)
 #define HOTKEY_SHOW   1
 #define HOTKEY_PLAIN  2
 #define TRAY_ICON_ID  1
-#define MAX_HISTORY   50
+
+// Absolute hard ceiling regardless of the user's configured historyLimit --
+// exists only to bound memory/disk use if settings are ever corrupted or
+// unset. The real, user-facing limit is AppSettings::historyLimit; trim
+// logic should clamp to min(settings.historyLimit, MAX_HISTORY_CEILING).
+#define MAX_HISTORY_CEILING 2000
 
 enum class ClipType {
     Text,

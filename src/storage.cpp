@@ -1,4 +1,4 @@
-#include "storage.h"
+﻿#include "storage.h"
 #include <shlobj.h>
 
 static std::wstring Encode(const std::wstring& s) {
@@ -69,6 +69,9 @@ bool Storage::LoadHistory(std::vector<ClipEntry>& history) {
     std::wstring line;
     while (std::getline(file, line)) {
         if (line.empty()) continue;
+        // A single malformed/hand-edited line must never crash startup --
+        // skip just that line and keep loading the rest of the history.
+        try {
         size_t p1 = line.find(L'|');
         size_t p2 = line.find(L'|', p1 + 1);
         if (p1 == std::wstring::npos || p2 == std::wstring::npos) continue;
@@ -125,6 +128,9 @@ bool Storage::LoadHistory(std::vector<ClipEntry>& history) {
 
         if (!entry.text.empty() || !entry.imagePath.empty() || !entry.filePaths.empty())
             history.push_back(entry);
+        } catch (const std::exception&) {
+            continue; // malformed line -- skip it, don't crash startup
+        }
     }
     return true;
 }

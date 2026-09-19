@@ -1,4 +1,4 @@
-#include "common.h"
+﻿#include "common.h"
 #include "clipboard.h"
 #include "tray.h"
 #include "popup.h"
@@ -23,6 +23,25 @@ static std::vector<Snippet> g_snippets;
 static void OnClipboardUpdate(HWND hwnd);
 static void OnPopupSelect(HWND hwnd, int index);
 static void ApplyAutoDelete(int days);
+
+// Single source of truth for "how many entries can we keep". Honors the
+// user's configured historyLimit (-1 == unlimited) but never exceeds the
+// absolute safety ceiling regardless of what settings say.
+static int EffectiveHistoryLimit() {
+    int limit = g_settings.Current.historyLimit;
+    if (limit < 0 || limit > MAX_HISTORY_CEILING) limit = MAX_HISTORY_CEILING;
+    return limit;
+}
+
+static void TrimHistoryToLimit() {
+    int limit = EffectiveHistoryLimit();
+    if ((int)g_history.size() <= limit) return;
+    for (size_t i = (size_t)limit; i < g_history.size(); i++) {
+        if (g_history[i].type == ClipType::Image)
+            Imaging::DeleteImage(g_history[i].imagePath);
+    }
+    g_history.resize(limit);
+}
 
 static void ShowToast(HWND hwnd, const std::wstring& text) {
     NOTIFYICONDATAW nid = {};
@@ -95,6 +114,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         Storage::LoadHistory(g_history);
         Snippets::Load(g_snippets);
         ApplyAutoDelete(g_settings.Current.autoDeleteDays);
+        TrimHistoryToLimit();
         Imaging::SweepOrphans(g_history);
         return 0;
 
@@ -146,6 +166,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         Storage::SaveHistory(g_history);
         Snippets::Save(g_snippets);
         g_tray.Destroy();
+        Imaging::Shutdown();
         PostQuitMessage(0);
         return 0;
         }
@@ -175,13 +196,7 @@ static void OnClipboardUpdate(HWND hwnd) {
             }
             g_history.insert(g_history.begin() + insertAt, entry);
 
-            if (g_history.size() > MAX_HISTORY) {
-                for (size_t i = MAX_HISTORY; i < g_history.size(); i++) {
-                    if (g_history[i].type == ClipType::Image)
-                        Imaging::DeleteImage(g_history[i].imagePath);
-                }
-                g_history.resize(MAX_HISTORY);
-            }
+            TrimHistoryToLimit();
 
             Storage::SaveHistory(g_history);
             if (g_settings.Current.showNotifications)
@@ -214,13 +229,7 @@ static void OnClipboardUpdate(HWND hwnd) {
             }
             g_history.insert(g_history.begin() + insertAt, entry);
 
-            if (g_history.size() > MAX_HISTORY) {
-                for (size_t i = MAX_HISTORY; i < g_history.size(); i++) {
-                    if (g_history[i].type == ClipType::Image)
-                        Imaging::DeleteImage(g_history[i].imagePath);
-                }
-                g_history.resize(MAX_HISTORY);
-            }
+            TrimHistoryToLimit();
 
             Storage::SaveHistory(g_history);
             if (g_settings.Current.showNotifications)
@@ -255,13 +264,7 @@ static void OnClipboardUpdate(HWND hwnd) {
     }
     g_history.insert(g_history.begin() + insertAt, entry);
 
-    if (g_history.size() > MAX_HISTORY) {
-        for (size_t i = MAX_HISTORY; i < g_history.size(); i++) {
-            if (g_history[i].type == ClipType::Image)
-                Imaging::DeleteImage(g_history[i].imagePath);
-        }
-        g_history.resize(MAX_HISTORY);
-    }
+    TrimHistoryToLimit();
 
     Storage::SaveHistory(g_history);
 

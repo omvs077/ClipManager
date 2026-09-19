@@ -1,4 +1,4 @@
-#include "imaging.h"
+﻿#include "imaging.h"
 #include <shlobj.h>
 #include <gdiplus.h>
 #include <objidl.h>
@@ -73,9 +73,22 @@ std::wstring Imaging::SaveClipboardImage(size_t maxBytes) {
 
     if (bmp.GetWidth() == 0 || bmp.GetHeight() == 0) return L"";
 
-    wchar_t filename[64];
-    swprintf_s(filename, L"clip_%lld.png", (long long)time(nullptr));
-    std::wstring fullPath = GetImageDir() + L"\\" + filename;
+    // Suffix with an incrementing counter to avoid collisions when two
+    // images are copied within the same second (same time() value would
+    // otherwise silently overwrite the earlier entry's file on disk).
+    std::wstring dir = GetImageDir();
+    std::wstring fullPath;
+    long long t = (long long)time(nullptr);
+    for (int n = 0; ; n++) {
+        wchar_t filename[64];
+        if (n == 0) swprintf_s(filename, L"clip_%lld.png", t);
+        else        swprintf_s(filename, L"clip_%lld_%d.png", t, n);
+        std::wstring candidate = dir + L"\\" + filename;
+        if (GetFileAttributesW(candidate.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            fullPath = candidate;
+            break;
+        }
+    }
 
     CLSID pngClsid;
     if (!GetEncoderClsid(L"image/png", &pngClsid)) return L"";
@@ -125,6 +138,13 @@ HBITMAP Imaging::LoadThumbnail(const std::wstring& path, int maxW, int maxH) {
 void Imaging::DeleteImage(const std::wstring& path) {
     if (!path.empty())
         DeleteFileW(path.c_str());
+}
+
+void Imaging::Shutdown() {
+    if (g_gdiToken) {
+        GdiplusShutdown(g_gdiToken);
+        g_gdiToken = 0;
+    }
 }
 
 void Imaging::SweepOrphans(const std::vector<ClipEntry>& history) {
