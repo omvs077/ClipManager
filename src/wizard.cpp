@@ -1,4 +1,4 @@
-#include "wizard.h"
+﻿#include "wizard.h"
 
 constexpr wchar_t Wizard::CLASS_NAME[];
 
@@ -50,7 +50,7 @@ bool Wizard::Create(HINSTANCE hInst) {
         return hw;
     };
 
-    // ── Page 0 ──────────────────────────────────────────────────
+    // â”€â”€ Page 0 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     m_pages[0] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD|WS_VISIBLE, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[0], L"Welcome to ClipManager", 32, 32, 396, 36, m_hFontBig);
@@ -66,7 +66,7 @@ bool Wizard::Create(HINSTANCE hInst) {
     SendMessageW(m_chkStartup, WM_SETFONT, (WPARAM)m_hFont, TRUE);
     SendMessageW(m_chkStartup, BM_SETCHECK, BST_CHECKED, 0);
 
-    // ── Page 1 ──────────────────────────────────────────────────
+    // â”€â”€ Page 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     m_pages[1] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[1], L"How much history?", 32, 32, 396, 36, m_hFontBig);
@@ -86,7 +86,7 @@ bool Wizard::Create(HINSTANCE hInst) {
     SendMessageW(m_cmbLimit, CB_ADDSTRING, 0, (LPARAM)L"Unlimited");
     SendMessageW(m_cmbLimit, CB_SETCURSEL, 1, 0);
 
-    // ── Page 2 ──────────────────────────────────────────────────
+    // â”€â”€ Page 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     m_pages[2] = CreateWindowExW(0, L"STATIC", L"",
         WS_CHILD, 0, 0, 460, 300, m_hwnd, nullptr, hInst, nullptr);
     MakeLabel(m_pages[2], L"You're all set!", 32, 32, 396, 36, m_hFontBig);
@@ -97,10 +97,10 @@ bool Wizard::Create(HINSTANCE hInst) {
         L"ClipManager is now running in your system tray.",
         32, 90, 396, 120, m_hFont);
     MakeLabel(m_pages[2],
-        L"Crafted by Dvvyom | GitHub: github.com/omvs077",
+        L"Dvvyom Labs  |  github.com/omvs077",
         32, 220, 396, 20, m_hFont);
 
-    // ── Buttons ─────────────────────────────────────────────────
+    // â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     m_btnSkip = CreateWindowExW(0, L"BUTTON", L"Skip",
         WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
         148, 360, 90, 32, m_hwnd, (HMENU)ID_BTN_SKIP, hInst, nullptr);

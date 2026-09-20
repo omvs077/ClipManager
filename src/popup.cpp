@@ -1,4 +1,4 @@
-#include "popup.h"
+﻿#include "popup.h"
 #include "detector.h"
 #include "imaging.h"
 #include <cwctype>
@@ -9,7 +9,7 @@
 
 constexpr wchar_t Popup::CLASS_NAME[];
 
-// â”€â”€ Palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Palette Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 #define C(r,g,b) RGB(r,g,b)
 static const COLORREF
 BG_DARK = C(248, 250, 252),
@@ -108,7 +108,7 @@ static std::wstring TypeIcon(ClipType t) {
     }
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 static void FillRoundRect(HDC hdc, RECT rc, int r, HBRUSH br) {
     HRGN rgn = CreateRoundRectRgn(rc.left, rc.top, rc.right, rc.bottom, r, r);
     FillRgn(hdc, rgn, br);
@@ -168,7 +168,7 @@ static void DrawIconBadge(HDC hdc, int x, int y, const std::wstring& icon,
     DrawTextW(hdc, icon.c_str(), (int)icon.size(), &badge, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 }
 
-// â”€â”€ Snippet Editor dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Snippet Editor dialog Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 namespace {
     struct SnippetDlgCtx {
         HWND nameEdit = nullptr;
@@ -225,7 +225,7 @@ namespace {
     }
 } // namespace
 
-// â”€â”€ Popup::Create â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Popup::Create Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 bool Popup::Create(HINSTANCE hInst) {
     m_hInst = hInst;
     InitResources();
@@ -607,7 +607,7 @@ void Popup::PaintLeftPanel(HDC hdc) {
 
     DrawHintKey(hdc, hFontSmall, 8, H - HINT_H + 9, L"\u21B5", L"Paste");
     DrawHintKey(hdc, hFontSmall, 76, H - HINT_H + 9, L"^P", L"Pin");
-    DrawHintKey(hdc, hFontSmall, 128, H - HINT_H + 9, L"Del", L"Remove");
+    DrawHintKey(hdc, hFontSmall, 128, H - HINT_H + 9, L"^Del", L"Remove");
     DrawHintKey(hdc, hFontSmall, 196, H - HINT_H + 9, L"Esc", L"Close");
 }
 
@@ -694,7 +694,7 @@ void Popup::SnippetEditor(int editIndex, const std::wstring& prefillText) {
     if (!isEdit && initName.empty() && !prefillText.empty()) {
         size_t nl = prefillText.find_first_of(L"\r\n");
         initName = prefillText.substr(0, nl == std::wstring::npos ? prefillText.size() : nl);
-        if (initName.size() > 40) initName = initName.substr(0, 40);
+        if (initName.size() > 40) initName = initName.substr(0, 40) + L"\u2026"; // ellipsis marks it as auto-truncated
     }
 
     static bool classRegistered = false;
@@ -1020,7 +1020,7 @@ void Popup::PaintRightPanel(HDC hdc) {
         { rx + 20, H - HINT_H + 9, rx + 280, H - 8 },
         CLR_DIM, hFontSmall, DT_LEFT | DT_TOP | DT_SINGLELINE);
 
-    DrawTextLine(hdc, L"Crafted by Dvvyom",
+    DrawTextLine(hdc, L"Dvvyom Labs",
         { W - 160, H - HINT_H + 9, W - 20, H - 8 },
         CLR_DIM, hFontSmall, DT_RIGHT | DT_TOP | DT_SINGLELINE);
 }
@@ -1211,3 +1211,5 @@ LRESULT CALLBACK Popup::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
+
+
