@@ -588,14 +588,16 @@ void Popup::PaintLeftPanel(HDC hdc) {
             sel ? CLR_WHITE : CLR_TEXT, hFontUI,
             DT_LEFT | DT_TOP | DT_SINGLELINE | DT_END_ELLIPSIS);
 
-        std::wstring sub = GetTypeName(e.type);
-        if (m_showTimestamps) {
-            sub += L"  \u2022  " + RelativeTime(e.timestamp);
+        if (!m_compactMode) {
+            std::wstring sub = GetTypeName(e.type);
+            if (m_showTimestamps) {
+                sub += L"  \u2022  " + RelativeTime(e.timestamp);
+            }
+            RECT subRc = { 34, y + 30, LEFT_W - 28, y + itemHeight - 4 };
+            DrawTextLine(hdc, sub, subRc,
+                sel ? C(225, 235, 255) : CLR_DIM, hFontSmall,
+                DT_LEFT | DT_TOP | DT_SINGLELINE);
         }
-        RECT subRc = { 34, y + 30, LEFT_W - 28, y + itemHeight - 4 };
-        DrawTextLine(hdc, sub, subRc,
-            sel ? C(225, 235, 255) : CLR_DIM, hFontSmall,
-            DT_LEFT | DT_TOP | DT_SINGLELINE);
 
         if (!sel)
             HLine(hdc, 8, LEFT_W - 8, y + itemHeight - 1, CLR_SEP);

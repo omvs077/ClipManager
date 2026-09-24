@@ -47,7 +47,6 @@
 #define WM_SHOW_POPUP (WM_APP + 2)
 #define WM_SHOW_SETTINGS (WM_APP + 3)
 #define HOTKEY_SHOW   1
-#define HOTKEY_PLAIN  2
 #define TRAY_ICON_ID  1
 
 // Absolute hard ceiling regardless of the user's configured historyLimit --

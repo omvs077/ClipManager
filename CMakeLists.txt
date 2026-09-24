@@ -1,7 +1,7 @@
 ﻿cmake_minimum_required(VERSION 3.20)
 project(ClipManager VERSION 1.1.1 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Statically link the MSVC runtime so the app has zero dependency on
@@ -20,6 +20,7 @@ set(SOURCES
     src/imaging.cpp
     src/wizard.cpp
     src/snippets.cpp
+    src/startup.cpp
 )
 
 add_executable(ClipManager WIN32 ${SOURCES} resources/resource.rc)
@@ -47,4 +48,7 @@ if(MSVC)
     # so there's no collision risk with the default automatic manifest.
     set_target_properties(ClipManager PROPERTIES VS_DPI_AWARE "PerMonitor")
 endif()
+
+
+
 

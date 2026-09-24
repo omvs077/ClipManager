@@ -9,6 +9,7 @@
 #include <gdiplus.h>
 #include "wizard.h"
 #include "snippets.h"
+#include "startup.h"
 #pragma comment(lib, "gdiplus.lib")
 using namespace Gdiplus;
 
@@ -108,8 +109,7 @@ static void ApplyAutoDelete(int days) {
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
-        RegisterHotKey(hwnd, HOTKEY_SHOW,  MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 'V');
-        RegisterHotKey(hwnd, HOTKEY_PLAIN, MOD_WIN | MOD_SHIFT | MOD_NOREPEAT, 'V');
+        RegisterHotKey(hwnd, HOTKEY_SHOW, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 'V');
         Clipboard::StartListening(hwnd);
         Storage::LoadHistory(g_history);
         Snippets::Load(g_snippets);
@@ -154,7 +154,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
     case WM_DESTROY:
         UnregisterHotKey(hwnd, HOTKEY_SHOW);
-        UnregisterHotKey(hwnd, HOTKEY_PLAIN);
         Clipboard::StopListening(hwnd);
         if (g_settings.Current.clearOnExit) {
             for (auto& e : g_history) {
@@ -313,6 +312,8 @@ static void OnPopupSelect(HWND hwnd, int index) {
 }
 
 int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
+    Startup::InitApartment();
+
     HANDLE hMutex = CreateMutexW(nullptr, TRUE, L"ClipManagerMutex");
     if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(hMutex); return 0; }
 
@@ -325,6 +326,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     wc.hInstance = hInst;
     wc.lpszClassName = L"ClipManagerMain";
     RegisterClassExW(&wc);
+
+    g_settings.LoadFromDisk();
 
     HWND hwnd = CreateWindowExW(0, L"ClipManagerMain", APP_NAME,
         WS_OVERLAPPEDWINDOW, 0, 0, 0, 0,
@@ -379,7 +382,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
             (L"/select,\"" + path + L"\"").c_str(), nullptr, SW_SHOWNORMAL);
     };
 
-    g_settings.OnSave = [](const AppSettings& s) {
+    g_settings.OnSave = [hwnd](const AppSettings& s) {
         if (s.historyLimit != -1 && (int)g_history.size() > s.historyLimit) {
             for (size_t i = s.historyLimit; i < g_history.size(); i++) {
                 if (g_history[i].type == ClipType::Image)
@@ -412,18 +415,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
         g_wizard.OnComplete = [](bool startup, int historyLimit) {
             g_settings.Current.startWithWindows = startup;
             g_settings.Current.historyLimit = historyLimit;
-            if (startup) {
-                wchar_t exePath[MAX_PATH];
-                GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-                HKEY hKey;
-                RegOpenKeyExW(HKEY_CURRENT_USER,
-                    L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-                    0, KEY_SET_VALUE, &hKey);
-                std::wstring val = L"\"" + std::wstring(exePath) + L"\"";
-                RegSetValueExW(hKey, L"ClipManager", 0, REG_SZ,
-                    (const BYTE*)val.c_str(), (DWORD)((val.size()+1)*sizeof(wchar_t)));
-                RegCloseKey(hKey);
-            }
+            Startup::SetEnabled(startup);
             Storage::SaveHistory(g_history);
         };
         g_wizard.Show();

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "common.h"
 #include <commctrl.h>
 
@@ -13,8 +13,7 @@ struct AppSettings {
     bool saveFiles = true;
     int  autoDeleteDays = 30;
 
-    std::wstring hotkeyMain = L"Win+V";
-    std::wstring hotkeyLatest = L"Ctrl+Alt+V";
+    std::wstring hotkeyMain = L"Ctrl+Shift+V";
 
     bool compactMode = false;
     bool showTimestamps = true;
@@ -30,6 +29,8 @@ public:
     void Show();
     void Hide();
     bool IsVisible() const;
+    void SaveToDisk();
+    void LoadFromDisk();
 
     AppSettings Current;
 
@@ -88,7 +89,6 @@ private:
     HWND m_chkClearExit = nullptr;
 
     HWND m_hkMain = nullptr;
-    HWND m_hkLatest = nullptr;
 
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK PanelProc(HWND, UINT, WPARAM, LPARAM);

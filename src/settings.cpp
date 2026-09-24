@@ -1,4 +1,5 @@
 ﻿#include "settings.h"
+#include "startup.h"
 #include <shlobj.h>
 #include <shellapi.h>
 #include <uxtheme.h>
@@ -25,13 +26,12 @@ constexpr wchar_t Settings::PANEL_CLASS[];
 #define ID_CHK_EXCLPWD   114
 #define ID_CHK_CLEAREXIT 115
 #define ID_HK_MAIN       116
-#define ID_HK_LATEST     117
 #define ID_BTN_SAVE      118
 #define ID_BTN_CANCEL    119
 #define ID_LNK_GITHUB    120
 #define ID_LNK_EMAIL     121
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Palette Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// -- Palette --------------------------------------------------------
 static const COLORREF
 C_BG = RGB(248, 250, 252),
 C_PANEL = RGB(252, 253, 255),
@@ -53,7 +53,7 @@ static void InitBrushes() {
     }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// -- Helpers ----------------------------------------------------------
 HWND Settings::MakeLabel(HWND parent, const wchar_t* text,
     int x, int y, int w, int h) {
     HWND hw = CreateWindowExW(0, L"STATIC", text,
@@ -117,7 +117,7 @@ HWND Settings::MakeLink(HWND parent, const wchar_t* text, int id,
     return hw;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Panel WndProc (dark background for tab panels) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// -- Panel WndProc (dark background for tab panels) -----------------
 LRESULT CALLBACK Settings::PanelProc(HWND hwnd, UINT msg,
     WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -150,7 +150,7 @@ LRESULT CALLBACK Settings::PanelProc(HWND hwnd, UINT msg,
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Tab panels (using the pixel blueprint grid) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// -- Tab panels (using the pixel blueprint grid) ---------------------
 HWND Settings::CreateTabGeneral(RECT rc) {
     HWND p = CreateWindowExW(0, PANEL_CLASS, L"",
         WS_CHILD, rc.left, rc.top,
@@ -221,14 +221,11 @@ HWND Settings::CreateTabHotkeys(RECT rc) {
     MakeLabel(p, L"Open Clipboard History:", 32, 50, 220, 20);
     m_hkMain = MakeHotkeyBox(p, ID_HK_MAIN, 270, 47, 160, 24);
     SendMessageW(m_hkMain, HKM_SETHOTKEY, MAKEWORD('V', HOTKEYF_CONTROL | HOTKEYF_SHIFT), 0);
-
-    MakeLabel(p, L"Paste Latest Clip:", 32, 84, 220, 20);
-    m_hkLatest = MakeHotkeyBox(p, ID_HK_LATEST, 270, 81, 160, 24);
+    EnableWindow(m_hkMain, FALSE);
 
     MakeLabel(p,
-        L"Note: Ctrl+Shift+V is reserved for the main hotkey\n"
-        L"and cannot be changed in this version.",
-        32, 130, 400, 40);
+        L"This shortcut is fixed and cannot be changed in this version.",
+        32, 90, 400, 40);
 
     return p;
 }
@@ -283,7 +280,7 @@ HWND Settings::CreateTabAbout(RECT rc) {
     return p;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Create Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// -- Create -----------------------------------------------------------
 bool Settings::Create(HINSTANCE hInst) {
     m_hInst = hInst;
     InitBrushes();
@@ -455,27 +452,70 @@ void Settings::SaveAndClose() {
         SendMessageW(m_chkClearExit, BM_GETCHECK, 0, 0) == BST_CHECKED;
 
     ApplyStartup(Current.startWithWindows);
+    SaveToDisk();
     if (OnSave) OnSave(Current);
     Hide();
 }
 
 void Settings::ApplyStartup(bool enable) {
-    wchar_t exePath[MAX_PATH];
-    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-    HKEY hKey;
-    RegOpenKeyExW(HKEY_CURRENT_USER,
-        L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-        0, KEY_SET_VALUE, &hKey);
-    if (enable) {
-        std::wstring val = L"\"" + std::wstring(exePath) + L"\"";
-        RegSetValueExW(hKey, L"ClipManager", 0, REG_SZ,
-            (const BYTE*)val.c_str(),
-            (DWORD)((val.size() + 1) * sizeof(wchar_t)));
+    Startup::SetEnabled(enable);
+}
+
+// Persists every AppSettings field to a simple key=value text file so
+// settings survive relaunch -- previously nothing was ever saved to disk.
+static std::wstring GetSettingsPath() {
+    wchar_t path[MAX_PATH];
+    SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, path);
+    std::wstring dir = std::wstring(path) + L"\\ClipManager";
+    CreateDirectoryW(dir.c_str(), nullptr);
+    return dir + L"\\settings.txt";
+}
+
+void Settings::SaveToDisk() {
+    std::wofstream file(GetSettingsPath(), std::ios::trunc);
+    if (!file.is_open()) return;
+    file << L"startWithWindows=" << (Current.startWithWindows ? 1 : 0) << L"\n";
+    file << L"minimizeToTray=" << (Current.minimizeToTray ? 1 : 0) << L"\n";
+    file << L"showNotifications=" << (Current.showNotifications ? 1 : 0) << L"\n";
+    file << L"historyLimit=" << Current.historyLimit << L"\n";
+    file << L"ignoreDuplicates=" << (Current.ignoreDuplicates ? 1 : 0) << L"\n";
+    file << L"saveImages=" << (Current.saveImages ? 1 : 0) << L"\n";
+    file << L"saveFiles=" << (Current.saveFiles ? 1 : 0) << L"\n";
+    file << L"autoDeleteDays=" << Current.autoDeleteDays << L"\n";
+    file << L"compactMode=" << (Current.compactMode ? 1 : 0) << L"\n";
+    file << L"showTimestamps=" << (Current.showTimestamps ? 1 : 0) << L"\n";
+    file << L"pauseMonitoring=" << (Current.pauseMonitoring ? 1 : 0) << L"\n";
+    file << L"excludePasswords=" << (Current.excludePasswords ? 1 : 0) << L"\n";
+    file << L"clearOnExit=" << (Current.clearOnExit ? 1 : 0) << L"\n";
+}
+
+void Settings::LoadFromDisk() {
+    std::wifstream file(GetSettingsPath());
+    if (!file.is_open()) return; // first run -- keep struct defaults
+    std::wstring line;
+    while (std::getline(file, line)) {
+        size_t eq = line.find(L'=');
+        if (eq == std::wstring::npos) continue;
+        std::wstring key = line.substr(0, eq);
+        std::wstring val = line.substr(eq + 1);
+        try {
+            if      (key == L"startWithWindows")  Current.startWithWindows  = std::stoi(val) != 0;
+            else if (key == L"minimizeToTray")    Current.minimizeToTray    = std::stoi(val) != 0;
+            else if (key == L"showNotifications") Current.showNotifications = std::stoi(val) != 0;
+            else if (key == L"historyLimit")      Current.historyLimit      = std::stoi(val);
+            else if (key == L"ignoreDuplicates")  Current.ignoreDuplicates  = std::stoi(val) != 0;
+            else if (key == L"saveImages")        Current.saveImages        = std::stoi(val) != 0;
+            else if (key == L"saveFiles")         Current.saveFiles         = std::stoi(val) != 0;
+            else if (key == L"autoDeleteDays")    Current.autoDeleteDays    = std::stoi(val);
+            else if (key == L"compactMode")       Current.compactMode       = std::stoi(val) != 0;
+            else if (key == L"showTimestamps")    Current.showTimestamps    = std::stoi(val) != 0;
+            else if (key == L"pauseMonitoring")   Current.pauseMonitoring   = std::stoi(val) != 0;
+            else if (key == L"excludePasswords")  Current.excludePasswords  = std::stoi(val) != 0;
+            else if (key == L"clearOnExit")       Current.clearOnExit       = std::stoi(val) != 0;
+        } catch (const std::exception&) {
+            continue; // malformed line -- skip it, don't crash startup
+        }
     }
-    else {
-        RegDeleteValueW(hKey, L"ClipManager");
-    }
-    RegCloseKey(hKey);
 }
 
 void Settings::Show() {
@@ -567,4 +607,3 @@ LRESULT CALLBACK Settings::WndProc(HWND hwnd, UINT msg,
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
-
