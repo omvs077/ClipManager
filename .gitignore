@@ -30,3 +30,6 @@ Desktop.ini
 # Installer output
 ClipManager_Setup.exe
 *.zip
+
+ClipManager.msix
+msix-package/
